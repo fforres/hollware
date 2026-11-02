@@ -18,7 +18,7 @@ import type { AssetRow, Media } from '../ports.ts'
 import { actorOf } from './actor.ts'
 import type { OperationContext, OperationHandler } from './types.ts'
 
-const NO_BUCKET = {
+export const NO_BUCKET = {
   message: 'This Hollware keeps no images: its Worker has no R2 bucket bound as MEDIA.',
   fix: 'Add { "binding": "MEDIA", "bucket_name": "<name>" } to r2_buckets in wrangler.jsonc, and run hollware deploy, which creates the bucket.',
 }
@@ -49,9 +49,9 @@ export function assetView(row: AssetRow, media: Media) {
   }
 }
 
-const STATUS_OF_PROBLEM = new WeakMap<object, 400 | 413 | 415>()
+const STATUS_OF_PROBLEM = new WeakMap<object, 400 | 404 | 413 | 415>()
 
-const refused = (message: string, fix: string, status?: 400 | 413 | 415) => {
+export const refused = (message: string, fix: string, status?: 400 | 404 | 413 | 415) => {
   const problem = { message, fix }
   if (status !== undefined) STATUS_OF_PROBLEM.set(problem, status)
   return { outcome: 'refused', problem } as const
@@ -76,7 +76,7 @@ function tooBig(bytes: number): Refusal {
   )
 }
 
-function tooBigForSite(bytes: number, most: number): Refusal {
+export function tooBigForSite(bytes: number, most: number): Refusal {
   return refused(
     `The file is ${bytes} bytes, more than the ${most} the site takes.`,
     'Make it smaller, or raise maxBytes in the media setting of the site with update_site.',
@@ -90,7 +90,7 @@ const NOT_TAKEN = refused(
   415,
 )
 
-const CUT_SHORT = refused(
+export const CUT_SHORT = refused(
   'The upload ended before the whole file arrived: nothing was kept.',
   'Send it again.',
   400,
@@ -222,9 +222,9 @@ const NO_ALLOWANCE = {
   },
 } as const
 
-type UploadOutput = Awaited<ReturnType<OperationHandler<'upload_asset'>>>
+export type UploadOutput = Awaited<ReturnType<OperationHandler<'upload_asset'>>>
 
-interface Described {
+export interface Described {
   readonly filename: string
   readonly alt: string
 }
@@ -273,34 +273,45 @@ export async function uploadStream(
       if (isCutShort(error)) return CUT_SHORT
       throw error
     }
-    const size = streamed.length
-    const head = await media.files.head(upload, SNIFFED_BYTES)
-    const format = head === null ? null : sniffAsset(head)
-    if (format === null) return NOT_TAKEN
-    if (isImageFormat(format)) {
-      if (size > MAX_ASSET_BYTES) return tooBig(size)
-      const file = await media.files.get(upload)
-      if (file === null) throw new Error(`No file at ${upload} after it was written`)
-      const bytes = new Uint8Array(await new Response(file.body).arrayBuffer())
-      return await keepImage(media, context, described, bytes, format)
-    }
-    if (size > most) return tooBigForSite(size, most)
-    const sha256 = await media.files.sha256(upload)
-    if (sha256 === null) throw new Error(`No file at ${upload} after it was written`)
-    const existing = await media.catalog.bySha256(site, sha256)
-    if (existing !== null) return { outcome: 'exists', asset: assetView(existing, media) }
-    const id = await assetIdOf(site, sha256)
-    await media.files.copy(upload, servedKey(site, id), format)
-    return await recordFile(media, context, described, { id, sha256, format, bytes: size })
+    return await adoptUpload(media, context, described, upload, streamed.length)
   } finally {
     await media.files.delete(upload)
   }
 }
 
+export async function adoptUpload(
+  media: Media,
+  context: OperationContext,
+  described: Described,
+  upload: string,
+  size: number,
+): Promise<UploadOutput> {
+  const site = context.site.key
+  const most = context.site.media.maxBytes
+  const head = await media.files.head(upload, SNIFFED_BYTES)
+  const format = head === null ? null : sniffAsset(head)
+  if (format === null) return NOT_TAKEN
+  if (isImageFormat(format)) {
+    if (size > MAX_ASSET_BYTES) return tooBig(size)
+    const file = await media.files.get(upload)
+    if (file === null) throw new Error(`No file at ${upload} after it was written`)
+    const bytes = new Uint8Array(await new Response(file.body).arrayBuffer())
+    return await keepImage(media, context, described, bytes, format)
+  }
+  if (size > most) return tooBigForSite(size, most)
+  const sha256 = await media.files.sha256(upload)
+  if (sha256 === null) throw new Error(`No file at ${upload} after it was written`)
+  const existing = await media.catalog.bySha256(site, sha256)
+  if (existing !== null) return { outcome: 'exists', asset: assetView(existing, media) }
+  const id = await assetIdOf(site, sha256)
+  await media.files.copy(upload, servedKey(site, id), format)
+  return await recordFile(media, context, described, { id, sha256, format, bytes: size })
+}
+
 const OCTET_STREAM = 'application/octet-stream'
 const SNIFFED_BYTES = 512
 
-function isCutShort(error: unknown): boolean {
+export function isCutShort(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
   return /network connection lost|fixedlengthstream|expected|fewer bytes|more bytes/i.test(message)
 }

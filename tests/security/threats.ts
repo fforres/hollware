@@ -1731,4 +1731,26 @@ export const THREATS: readonly Threat[] = [
       },
     ],
   },
+  {
+    id: 'T-134',
+    area: 'Content',
+    threat:
+      'A writer streams a file larger than it declares or the site takes, or starts uploads in parts it never finishes, to fill R2 or hold the Worker',
+    mitigation:
+      "The declared Content-Length or bytes are checked against the site's media maxBytes before a byte is read; each body goes to R2 through a FixedLengthStream that refuses one shorter or longer than declared; only the person who started an upload in parts may continue it, and the cron trigger aborts it after 24 hours",
+    guards: [
+      {
+        file: 'packages/server/tests/http/assets.workerd.test.ts',
+        test: 'refuses before it reads the body: no token, no scope, no filename, no length, past the limit',
+      },
+      {
+        file: 'packages/server/tests/http/uploads.workerd.test.ts',
+        test: 'refuses a part of the wrong size or number, a list that misses one, and the upload of someone else',
+      },
+      {
+        file: 'packages/server/tests/http/uploads.workerd.test.ts',
+        test: 'aborts on DELETE, refuses an upload past its 24 hours, and the cron aborts it',
+      },
+    ],
+  },
 ]

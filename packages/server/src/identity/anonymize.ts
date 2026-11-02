@@ -28,6 +28,7 @@ const IN_SITE = [
   `DELETE FROM invitations WHERE site_id = ?1 AND user_id = ?2 AND ${OPEN}`,
   `DELETE FROM tokens WHERE site_id = ?1 AND user_id = ?2 AND ${OPEN}`,
   `DELETE FROM agent_grants WHERE site_id = ?1 AND user_id = ?2 AND ${OPEN}`,
+  `DELETE FROM uploads WHERE site_id = ?1 AND created_by = ?2 AND ${OPEN}`,
 ]
 
 const GONE = [
@@ -44,6 +45,7 @@ const GONE = [
   'site_changes WHERE actor_user_id = ?1',
   'assets WHERE created_by = ?1',
   'entry_purges WHERE purged_by = ?1',
+  'uploads WHERE created_by = ?1',
   'audit_log WHERE actor_user_id = ?1',
   "audit_log WHERE target_type = 'user' AND target_id = ?1",
 ]

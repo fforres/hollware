@@ -73,7 +73,7 @@ new process group, so the child outlives its supervisor.
   (`examples/worker-site/src/probe.ts`), each bound to itself as `PROBE`, is how a Node.js test asks
   a built Worker for its Node.js globals. It is no route, so the gateway's guard has no exception.
 - `budgets.json` holds the ceilings of the built playground Worker, minified and gzipped (main
-  module 250 KiB, all modules 455 KiB; the CPU of a write is `vp run bench`'s); raising one says why in its `reason`.
+  module 250 KiB, all modules 462 KiB; the CPU of a write is `vp run bench`'s); raising one says why in its `reason`.
   `scripts/check-budgets.ts` fails above a ceiling, keeps Comark and `@comark/html` in lazy chunks
   (read from the source maps of the build), and logs startup and the cost of a write.
 - The conformance Worker (`tests/conformance/worker`) runs under `wrangler dev`, never `vp dev`:

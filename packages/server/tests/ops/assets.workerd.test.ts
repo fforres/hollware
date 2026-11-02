@@ -2,7 +2,7 @@ import { env } from 'cloudflare:workers'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { MAX_ASSET_BYTES, makePreviewToken, type Conversion } from '@hollware/core'
-import { d1Catalog, r2Files } from '../../src/media/cloudflare.ts'
+import { d1Catalog, d1Uploads, r2Files } from '../../src/media/cloudflare.ts'
 import {
   getAsset,
   listAssets,
@@ -74,6 +74,7 @@ function mediaWith(
     files: r2Files(env.MEDIA),
     images,
     catalog: d1Catalog(env.DB),
+    uploads: d1Uploads(env.DB),
     baseUrl: 'https://cms.example.com/assets/',
     download,
   }

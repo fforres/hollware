@@ -102,6 +102,7 @@ describe('D1 schema', () => {
       'sites',
       'tokens',
       'unpublishes',
+      'uploads',
       'users',
     ])
     const violations = checkSchema({

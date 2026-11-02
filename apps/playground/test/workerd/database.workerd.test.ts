@@ -47,6 +47,7 @@ it('has the tables of the @hollware/server migrations, and no others', async () 
     'sites',
     'tokens',
     'unpublishes',
+    'uploads',
     'users',
   ])
 })

@@ -14,7 +14,7 @@ import { contentFixture } from '../../../../tests/fixtures/content.ts'
 import { createAnalyticsSources } from '../../src/analytics/sources.ts'
 import { backupsIn } from '../../src/backup/run.ts'
 import { createD1Store } from '../../src/db/index.ts'
-import { d1Catalog, r2Files } from '../../src/media/cloudflare.ts'
+import { d1Catalog, d1Uploads, r2Files } from '../../src/media/cloudflare.ts'
 import { handlers } from '../../src/ops/index.ts'
 import { invoke } from '../../src/ops/invoke.ts'
 import type { OperationContext } from '../../src/ops/types.ts'
@@ -135,6 +135,7 @@ function withPorts(context: OperationContext, clock: Clock): OperationContext {
       files: r2Files(env.MEDIA),
       images: null,
       catalog: d1Catalog(env.DB),
+      uploads: d1Uploads(env.DB),
       baseUrl: 'https://cms.example.com/assets/',
       download: () => Promise.reject(new Error('no network in this test')),
     },

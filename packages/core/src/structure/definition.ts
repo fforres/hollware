@@ -230,7 +230,7 @@ export const siteDefinitionData = z.strictObject({
         .max(MAX_FILE_BYTES)
         .default(DEFAULT_MEDIA.maxBytes)
         .describe(
-          'The largest video (MP4, WebM) or PDF the site takes, in bytes: 104857600 (100 MB) by default, up to 5000000000. One upload request carries at most what the Cloudflare plan of the zone allows: 100 MB on Free and Pro, 200 MB on Business, 500 MB on Enterprise. Images stay at 10 MB, what Cloudflare Images converts.',
+          'The largest video (MP4, WebM) or PDF the site takes, in bytes: 104857600 (100 MB) by default, up to 5000000000. One request carries at most what the Cloudflare plan of the zone allows (100 MB on Free and Pro), so a larger file goes up in parts of 50 MiB: POST /v1/uploads. Images stay at 10 MB, what Cloudflare Images converts.',
         ),
     })
     .default({ ...DEFAULT_MEDIA, widths: [...DEFAULT_MEDIA.widths] })

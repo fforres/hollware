@@ -6,6 +6,8 @@ import type {
   ImageConverter,
   ImageInfo,
   Media,
+  UploadCatalog,
+  UploadRow,
 } from '../ports.ts'
 
 const streamOf = (bytes: Uint8Array): ReadableStream<Uint8Array> => new Blob([bytes]).stream()
@@ -72,6 +74,28 @@ export function r2Files(bucket: R2Bucket): AssetFiles {
     },
     async delete(key) {
       await bucket.delete(key)
+    },
+    async startParts(key) {
+      return (await bucket.createMultipartUpload(key)).uploadId
+    },
+    async putPart(key, multipartId, part, body, length) {
+      const fixed = new FixedLengthStream(length)
+      const upload = bucket.resumeMultipartUpload(key, multipartId)
+      const [piped, put] = await Promise.allSettled([
+        body.pipeTo(fixed.writable),
+        upload.uploadPart(part, fixed.readable),
+      ])
+      if (put.status === 'rejected') throw put.reason
+      if (piped.status === 'rejected') throw piped.reason
+      return put.value.etag
+    },
+    async finishParts(key, multipartId, parts) {
+      await bucket
+        .resumeMultipartUpload(key, multipartId)
+        .complete(parts.map(({ part, etag }) => ({ partNumber: part, etag })))
+    },
+    async abortParts(key, multipartId) {
+      await bucket.resumeMultipartUpload(key, multipartId).abort()
     },
   }
 }
@@ -260,6 +284,79 @@ export function d1Catalog(db: D1Database): AssetCatalog {
   }
 }
 
+interface UploadRecord {
+  readonly id: string
+  readonly site_id: string
+  readonly key: string
+  readonly multipart_id: string
+  readonly filename: string
+  readonly alt: string
+  readonly bytes: number
+  readonly part_bytes: number
+  readonly created_by: string
+  readonly expires_at: string
+  readonly created_at: string
+}
+
+const uploadOf = (row: UploadRecord): UploadRow => ({
+  id: row.id,
+  site: row.site_id,
+  key: row.key,
+  multipartId: row.multipart_id,
+  filename: row.filename,
+  alt: row.alt,
+  bytes: row.bytes,
+  partBytes: row.part_bytes,
+  createdBy: row.created_by,
+  expiresAt: row.expires_at,
+  createdAt: row.created_at,
+})
+
+export function d1Uploads(db: D1Database): UploadCatalog {
+  return {
+    async insert(upload) {
+      await db
+        .prepare(
+          `INSERT INTO uploads (id, site_id, key, multipart_id, filename, alt, bytes, part_bytes,
+             created_by, expires_at, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          upload.id,
+          upload.site,
+          upload.key,
+          upload.multipartId,
+          upload.filename,
+          upload.alt,
+          upload.bytes,
+          upload.partBytes,
+          upload.createdBy,
+          upload.expiresAt,
+          upload.createdAt,
+          upload.createdAt,
+        )
+        .run()
+    },
+    async byId(site, id) {
+      const row = await db
+        .prepare('SELECT * FROM uploads WHERE site_id = ? AND id = ?')
+        .bind(site, id)
+        .first<UploadRecord>()
+      return row === null ? null : uploadOf(row)
+    },
+    async delete(site, id) {
+      await db.prepare('DELETE FROM uploads WHERE site_id = ? AND id = ?').bind(site, id).run()
+    },
+    async expired(site, now) {
+      const { results } = await db
+        .prepare('SELECT * FROM uploads WHERE site_id = ? AND expires_at <= ? LIMIT 50')
+        .bind(site, now)
+        .all<UploadRecord>()
+      return results.map(uploadOf)
+    },
+  }
+}
+
 export interface MediaEnv {
   readonly DB: D1Database
   readonly HOLLWARE_PUBLIC_URL?: string
@@ -273,6 +370,7 @@ export function mediaOfEnv(env: MediaEnv): Media | null {
     files: r2Files(env.MEDIA),
     images: env.IMAGES === undefined ? null : imagesConverter(env.IMAGES),
     catalog: d1Catalog(env.DB),
+    uploads: d1Uploads(env.DB),
     baseUrl: `${env.HOLLWARE_PUBLIC_URL.replace(/\/$/, '')}/assets/`,
     download: (url) => fetch(url, { redirect: 'manual', headers: { accept: 'image/*' } }),
   }

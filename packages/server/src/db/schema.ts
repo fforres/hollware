@@ -831,6 +831,32 @@ export const assets = sqliteTable(
   ],
 )
 
+export const uploads = sqliteTable(
+  'uploads',
+  {
+    id: id('upl'),
+    siteId: siteId(),
+    key: text('key').notNull(),
+    multipartId: text('multipart_id').notNull(),
+    filename: text('filename').notNull(),
+    alt: text('alt').notNull(),
+    bytes: integer('bytes').notNull(),
+    partBytes: integer('part_bytes').notNull(),
+    createdBy: text('created_by').notNull(),
+    expiresAt: text('expires_at').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('uploads_id_site').on(t.id, t.siteId),
+    index('uploads_expiry').on(t.expiresAt),
+    foreignKey({ name: 'uploads_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    check(
+      'uploads_sizes',
+      sql`${t.bytes} > 0 AND ${t.partBytes} >= 5242880 AND length(${t.alt}) BETWEEN 1 AND 500 AND length(${t.filename}) BETWEEN 1 AND 200`,
+    ),
+  ],
+)
+
 export const agentGrants = sqliteTable(
   'agent_grants',
   {

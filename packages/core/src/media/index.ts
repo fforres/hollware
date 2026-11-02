@@ -26,6 +26,12 @@ export const DEFAULT_MAX_FILE_BYTES = 100 * 1024 * 1024
 /** The largest `maxBytes` a site may set: the largest object R2 writes in one put. */
 export const MAX_FILE_BYTES = 5_000_000_000
 
+/** The size of each part of an upload in parts but the last: 50 MiB, under any plan's limit of a request. */
+export const MULTIPART_PART_BYTES = 50 * 1024 * 1024
+
+/** How long an upload in parts may take before the cron aborts it. */
+export const UPLOAD_HOURS = 24
+
 /** The extension a format is served and exported with. */
 export const EXTENSIONS: Readonly<Record<AssetFormat, string>> = {
   'image/jpeg': 'jpg',

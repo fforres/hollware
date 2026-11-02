@@ -818,6 +818,41 @@ export interface AssetFiles {
   sha256(key: string): Promise<string | null>
   copy(from: string, to: string, contentType: string): Promise<void>
   delete(key: string): Promise<void>
+  startParts(key: string): Promise<string>
+  putPart(
+    key: string,
+    multipartId: string,
+    part: number,
+    body: ReadableStream<Uint8Array>,
+    length: number,
+  ): Promise<string>
+  finishParts(
+    key: string,
+    multipartId: string,
+    parts: readonly { readonly part: number; readonly etag: string }[],
+  ): Promise<void>
+  abortParts(key: string, multipartId: string): Promise<void>
+}
+
+export interface UploadRow {
+  readonly id: string
+  readonly site: string
+  readonly key: string
+  readonly multipartId: string
+  readonly filename: string
+  readonly alt: string
+  readonly bytes: number
+  readonly partBytes: number
+  readonly createdBy: string
+  readonly expiresAt: string
+  readonly createdAt: string
+}
+
+export interface UploadCatalog {
+  insert(row: UploadRow): Promise<void>
+  byId(site: string, id: string): Promise<UploadRow | null>
+  delete(site: string, id: string): Promise<void>
+  expired(site: string, now: string): Promise<readonly UploadRow[]>
 }
 
 /** What an image is, as the binding reads it; an SVG has no size. */
@@ -877,6 +912,7 @@ export interface Media {
   readonly files: AssetFiles
   readonly images: ImageConverter | null
   readonly catalog: AssetCatalog
+  readonly uploads: UploadCatalog
   /** Where the Worker serves the assets: `<HOLLWARE_PUBLIC_URL>/assets/`. */
   readonly baseUrl: string
   /** Fetches the URL an agent gave for an image, and answers a redirect without following it. */

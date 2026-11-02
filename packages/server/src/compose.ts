@@ -1,3 +1,5 @@
+import { mediaOfEnv } from './media/cloudflare.ts'
+import { abortExpiredUploads } from './ops/uploads.ts'
 import {
   definitionsFromConfig,
   resolveAdmin,
@@ -142,6 +144,8 @@ export function createHollwareWith(
         await runDueSchedules(due)
         await runDueUnpublishes(due)
         await dropExpiredLines(env.DB, site, clock.now())
+        const media = mediaOfEnv(env)
+        if (media !== null) await abortExpiredUploads(media, site.key, clock.now())
         const backups = backupBucketOf(env)
         if (backups !== undefined) {
           const backup = await backUpSite(env.DB, backups, site, clock.now())
