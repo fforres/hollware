@@ -847,7 +847,7 @@ test('the owner uploads a PDF to the library, opens it and copies a link to it',
     mimeType: 'application/pdf',
     buffer: Buffer.from('%PDF-1.7\n%\u00e2\u00e3\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n'),
   })
-  await owner.getByLabel('What it shows').fill('The privacy policy')
+  await owner.getByRole('textbox', { name: 'What it shows' }).fill('The privacy policy')
   await owner.getByRole('button', { name: 'Upload' }).click()
 
   const card = owner.getByRole('listitem').filter({ hasText: 'The privacy policy' })
