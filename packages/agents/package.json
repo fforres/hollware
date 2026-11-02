@@ -1,6 +1,6 @@
 {
   "name": "@hollware/agents",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Agents for Hollware on Cloudflare: an editorial reviewer, a translator and a weekly auditor, none of which publishes.",
   "homepage": "https://hollware.com",
   "bugs": {

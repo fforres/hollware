@@ -1,6 +1,6 @@
 {
   "name": "hollware",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "The Hollware CLI: init, dev, deploy, doctor, migrate, tokens, import and export.",
   "homepage": "https://hollware.com",
   "bugs": {

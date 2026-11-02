@@ -1,6 +1,6 @@
 {
   "name": "@hollware/vue",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Read Hollware from any Vue 3 app that is not Nuxt: a component that renders an entry's Comark document, server helpers, and composables for a browser-only app.",
   "homepage": "https://hollware.com",
   "bugs": {

@@ -1,5 +1,13 @@
 # @hollware/server
 
+## 1.5.1
+
+### Patch Changes
+
+- [#100](https://github.com/hollware/hollware/pull/100) [`07d491b`](https://github.com/hollware/hollware/commit/07d491bc7f69cbdd4f5bcc97ba3c1b8ad787177f) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `HOLLWARE_EMAIL_FROM` takes a name with its address, `Hollware <cms@example.com>`, and Hollware hands Email Service the two apart, as it asks.
+- Updated dependencies []:
+  - @hollware/core@1.5.1
+
 ## 1.5.0
 
 ### Minor Changes
