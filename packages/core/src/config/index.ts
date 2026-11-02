@@ -8,6 +8,7 @@ export type {
   ResolvedReview,
   AuthDefinition,
   ProviderDefinition,
+  ProvisionRole,
   ResolvedAccess,
   ResolvedProvider,
   ResolvedAdmin,

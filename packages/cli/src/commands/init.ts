@@ -43,7 +43,7 @@ import { deliverToken, tokenFileOf, type TokenFile } from '../token-output.ts'
 
 export const INIT_USAGE = [
   'Usage: hollware init --site <key> [--preset <blog | docs | empty>] [--locales <list>]',
-  '                     [--local | --remote] [--owner-name <name>] [--owner-email <address>]',
+  '                     [--local | --remote] --owner-email <address> [--owner-name <name>]',
   '                     [--database <name>] [--url <url>]',
   '                     [--ip-addresses <off | hashed>] [--audit-retention-days <n>]',
   '                     [--token-file <path> [--force]] [--json]',
@@ -66,7 +66,8 @@ export const INIT_USAGE = [
   '  --remote             Use the database in Cloudflare',
   '  --owner-name <name>  The name of the owner',
   '  --owner-email <address>',
-  '                       The address the owner signs in with through a provider (Google, Microsoft,',
+  '                       The address of the owner, required when init makes them: Hollware knows them',
+  '                       by it, and they may sign in with it through a provider (Google, Microsoft,',
   '                       GitHub, OIDC, Cloudflare Access); you vouch for it, so it counts as verified',
   '  --database <name>    The D1 database, by name or binding (default: the binding "DB" of wrangler.jsonc)',
   '  --url <url>          The public URL of Hollware, for the link (default: HOLLWARE_PUBLIC_URL of wrangler.jsonc)',
@@ -153,6 +154,11 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
     })
   }
 
+  if (ownerEmail === undefined) {
+    throw new UsageError(
+      '--owner-email is required to make the owner: name their address, such as --owner-email ada@example.com.',
+    )
+  }
   const now = io.now()
   const timestamp = now.toISOString()
   const ownerId = newId(io, 'user')

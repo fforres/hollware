@@ -65,10 +65,10 @@ describe('a token for an agent member', () => {
     })
   })
 
-  it('offers an agent the four scopes of an author, and a person all six', () => {
+  it('offers an agent the four scopes of an author, and a person all seven', () => {
     expect([scopesFor('usr_01M66Q4Y3VA9JW082W47YN3MM0'), scopesFor(null).length]).toEqual([
       ['content:read', 'content:write', 'review:read', 'review:comment'],
-      6,
+      7,
     ])
   })
 })

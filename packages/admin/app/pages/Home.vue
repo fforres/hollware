@@ -8,7 +8,7 @@ import { formatDateTime, formatNumber, useMessages } from '../i18n/index.ts'
 import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
 import { databaseSize } from '../lib/database.ts'
 import { firstSteps, type TokenOfSite } from '../lib/first-steps.ts'
-import { me } from '../lib/me.ts'
+import { can, me } from '../lib/me.ts'
 import { personName } from '../lib/people.ts'
 import { admin, operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
@@ -18,9 +18,7 @@ type Entry = Output<'list_entries'>['entries'][number]
 const m = useMessages()
 const mcpLine = `claude mcp add --transport http hollware ${window.location.origin}/mcp --header "Authorization: Bearer <token>"`
 
-const owner = computed(
-  () => me.value?.sites.find((membership) => membership.site === me.value?.site)?.role === 'owner',
-)
+const owner = computed(() => can(me.value, 'schema:admin'))
 
 const tokensQuery = useQuery({ ...admin<{ tokens: TokenOfSite[] }>('tokens'), enabled: owner })
 const peopleQuery = useQuery({

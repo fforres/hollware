@@ -31,5 +31,6 @@
   "0029_review_items.sql": "96ce0fec2e81cd1d2e854e7823ad4a10c820c8f18aaab7a15953efa685bb0fe1",
   "0030_review_items_backfill.sql": "0f48a373cc41adc45f8e010a593f3b9e5e70e970cb43c31b9f7e423bcb75161a",
   "0031_agents.sql": "cbd101c4b32165760fabfe1749b71fc014af0c46ea14e324f30b223d074c6ea7",
-  "0032_media_files.sql": "5d1b66d44b249452991cd816a2658b485e08563f8b1d843ac66f257a5d0c667e"
+  "0032_roles_and_invitations.sql": "04bf87218f32ff23f32bfd8f940d4eb3d2a11e7bc99f1f7fcc8fdbe8039cd556",
+  "0033_media_files.sql": "5d1b66d44b249452991cd816a2658b485e08563f8b1d843ac66f257a5d0c667e"
 }

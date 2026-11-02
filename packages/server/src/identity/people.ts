@@ -1,6 +1,12 @@
 import type { Role } from '../auth/roles.ts'
 
-export type PeopleChange = 'changed' | 'unchanged' | 'not_member' | 'last_owner' | 'agent'
+export type PeopleChange =
+  | 'changed'
+  | 'unchanged'
+  | 'not_member'
+  | 'last_owner'
+  | 'owner_only'
+  | 'agent'
 
 const OTHER_OWNERS =
   "(SELECT count(*) FROM members WHERE site_id = ?1 AND role = 'owner' AND user_id <> ?2) > 0"
@@ -19,6 +25,7 @@ export async function setRole(
     readonly userId: string
     readonly role: Role
     readonly now: string
+    readonly owners: boolean
   },
 ): Promise<PeopleChange> {
   const current = await db
@@ -30,6 +37,7 @@ export async function setRole(
   if (current === null) return 'not_member'
   if (current.kind === 'agent') return 'agent'
   if (current.role === input.role) return 'unchanged'
+  if (!input.owners && (current.role === 'owner' || input.role === 'owner')) return 'owner_only'
   const result = await db
     .prepare(
       `UPDATE members SET role = ?3, updated_at = ?4 WHERE site_id = ?1 AND user_id = ?2
@@ -42,9 +50,11 @@ export async function setRole(
 
 export async function removeMember(
   db: D1Database,
-  input: { readonly site: string; readonly userId: string },
+  input: { readonly site: string; readonly userId: string; readonly owners: boolean },
 ): Promise<PeopleChange> {
-  if ((await roleOf(db, input.site, input.userId)) === null) return 'not_member'
+  const role = await roleOf(db, input.site, input.userId)
+  if (role === null) return 'not_member'
+  if (!input.owners && role === 'owner') return 'owner_only'
   const result = await db
     .prepare(
       `DELETE FROM members WHERE site_id = ?1 AND user_id = ?2 AND (role <> 'owner' OR ${OTHER_OWNERS})`,

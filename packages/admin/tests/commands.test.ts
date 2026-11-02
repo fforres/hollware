@@ -15,6 +15,7 @@ const base: CommandInput = {
   query: '',
   site: 'blog',
   role: 'owner',
+  scopes: ['content:read', 'content:write', 'content:publish', 'schema:admin', 'site:owner'],
   sites: [
     { site: 'blog', role: 'owner' },
     { site: 'docs', role: 'editor' },
@@ -130,9 +131,15 @@ describe('the commands of ⌘K', () => {
       ['Settings: Account', '/settings/account'],
       ['Collection blog', '/settings/collections/blog'],
     ])
-    expect(labels({ ...base, role: 'author' }, 'go')).not.toContain('Settings: Danger zone')
-    expect(labels({ ...base, role: 'author' }, 'go')).not.toContain('Settings: Activity')
-    expect(labels({ ...base, role: 'editor' }, 'go')).not.toContain('Settings: Agents')
+    const admin = labels({ ...base, scopes: ['content:read', 'schema:admin'] }, 'go') ?? []
+    const editor = labels({ ...base, scopes: ['content:read', 'content:publish'] }, 'go') ?? []
+    expect([admin.includes('Settings: Danger zone'), admin.includes('Settings: Activity')]).toEqual(
+      [false, true],
+    )
+    expect([editor.includes('Settings: Agents'), editor.includes('Settings: Backups')]).toEqual([
+      false,
+      false,
+    ])
   })
 
   it('create an entry, a collection, a site, an invitation and a token', () => {

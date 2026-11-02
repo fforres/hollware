@@ -4,8 +4,8 @@ Creates a new project for [Hollware](https://hollware.com), an open-source headl
 agent era, native to Cloudflare Workers.
 
 ```sh
-npm create hollware my-cms
-pnpm create hollware my-cms --pm pnpm
+npm create hollware my-cms -- --owner-email you@example.com
+pnpm create hollware my-cms --owner-email you@example.com --pm pnpm
 ```
 
 It copies the starter into `my-cms`, pins every Hollware package at its own version, runs

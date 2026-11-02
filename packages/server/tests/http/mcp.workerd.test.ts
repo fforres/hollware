@@ -120,6 +120,7 @@ describe('what the handler gets from the gateway', () => {
         'content:write',
         'content:publish',
         'schema:admin',
+        'site:owner',
         'review:read',
         'review:comment',
       ],

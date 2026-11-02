@@ -52,12 +52,12 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/principles.test.ts`: the README principles are the feature request dropdown options; no MCP tool manages people or tokens.
 - `tests/conventions/code-of-conduct.test.ts`: no template placeholder, the issues as contact.
 - `tests/conventions/personal-email.test.ts`: no personal email address in any file.
-- `tests/conventions/invisible-characters.test.ts`: no text file but `INVISIBLE_CHARACTER_FILES` holds a bidirectional control, zero-width mark, byte order mark or line or paragraph separator.
+- `tests/conventions/invisible-characters.test.ts`: no text file but `INVISIBLE_CHARACTER_FILES` holds an invisible or bidirectional character.
 - `tests/conventions/drizzle-api.test.ts`: `packages/server/src` uses neither `db.query` nor drizzle's `relations`.
 - `tests/conventions/legacy-role.test.ts`: no package source reads `users.role`; the role of a person in a site is in `members`.
 - `tests/conventions/admin-isolation.test.ts`: no code outside `packages/admin` imports `@hollware/admin`, but a project's `vite.config.ts` may import its root (`adminAssets()`).
 - `tests/conventions/admin-messages.test.ts`: admin and site templates read every text from messages.
-- `tests/conventions/public-api.test.ts`: `api/` is the code's public API; `scripts/api-check.test.ts`: a break needs a major, an rc none.
+- `tests/conventions/public-api.test.ts`: `api/` is the code's public API; `scripts/api-check.test.ts`: a break needs a major or a line of `.changeset/accepted-breaks.json`, an rc none.
 - `tests/conventions/comments.test.ts`: no comment but a bin's shebang, a top `/// <reference>`, a reasoned `@ts-expect-error` or `oxlint-disable-next-line`, theme markers, action pins, pnpm reasons, `ZIZMOR_IGNORES`, migration breakpoints, shipped migrations, TSDoc of public exports.
 - `tests/conventions/doc-refs.test.ts`: no file cites a removed document (ADR, design, brand book) or an unknown threat id, but `DOC_REF_FILES` and shipped migrations.
 - `tests/conventions/threats.test.ts`: each threat of `tests/security/threats.ts` cites existing tests or why it is accepted.

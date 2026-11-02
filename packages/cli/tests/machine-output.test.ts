@@ -15,6 +15,7 @@ const SCOPES = [
   'content:write',
   'content:publish',
   'schema:admin',
+  'site:owner',
   'review:read',
   'review:comment',
 ]
@@ -27,7 +28,7 @@ function initProject(files: Record<string, string> = { 'wrangler.jsonc': WITH_UR
     cwd,
     wrangler,
     run: (argv: string[]) =>
-      run(['init', '--site', 'blog', ...argv], {
+      run(['init', '--owner-email', 'olga@example.com', '--site', 'blog', ...argv], {
         cwd,
         wrangler: wrangler.run,
         tempDir: () => scratch,

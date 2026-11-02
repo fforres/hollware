@@ -26,7 +26,7 @@ its owner and a first token. To do it again on a new local database:
 
 ```sh
 pnpm exec hollware migrate --local
-pnpm exec hollware init --site my-site --local   # --preset blog|docs|empty --locales en,es
+pnpm exec hollware init --site my-site --owner-email you@example.com --local   # --preset, --locales
 ```
 
 `init` prints a personal token once, and a link to set up your passkey for the admin. Give the
@@ -41,7 +41,7 @@ claude mcp add --transport http hollware http://localhost:5199/mcp --header "Aut
 ```sh
 pnpm exec wrangler login
 pnpm run deploy                              # creates the database, KV, queues and bucket, and migrates
-pnpm exec hollware init --site my-site --remote
+pnpm exec hollware init --site my-site --owner-email you@example.com --remote
 ```
 
 The first deploy writes the public URL of the Worker into `wrangler.jsonc`: commit it. `pnpm run doctor` checks the project and says what to fix.

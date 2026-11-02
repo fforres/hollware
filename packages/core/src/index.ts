@@ -41,6 +41,7 @@ export {
   type HollwareConfig,
   type ProviderDefinition,
   type ResolveConfig,
+  type ProvisionRole,
   type ResolvedAccess,
   type ResolvedAgent,
   type ResolvedAudit,

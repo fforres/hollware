@@ -7,6 +7,7 @@ export const SCOPES = [
   'content:write',
   'content:publish',
   'schema:admin',
+  'site:owner',
   'review:read',
   'review:comment',
 ] as const

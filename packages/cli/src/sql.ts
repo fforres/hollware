@@ -160,7 +160,7 @@ export interface FirstSite {
   ownerId: string
   memberId: string
   ownerName: string | undefined
-  ownerEmail?: string | undefined
+  ownerEmail: string
   token: NewToken
   structure?: InitialStructure | undefined
 }
@@ -194,10 +194,7 @@ export function initScript({
   structure,
 }: FirstSite): string {
   const name = ownerName === undefined ? 'NULL' : quote(ownerName)
-  const user =
-    ownerEmail === undefined
-      ? `INSERT INTO users (id, name, role, created_at, updated_at) VALUES (${quote(ownerId)}, ${name}, 'owner', ${quote(token.now)}, ${quote(token.now)});`
-      : `INSERT INTO users (id, name, role, email, email_verified_at, created_at, updated_at) VALUES (${quote(ownerId)}, ${name}, 'owner', ${quote(ownerEmail)}, ${quote(token.now)}, ${quote(token.now)}, ${quote(token.now)});`
+  const user = `INSERT INTO users (id, name, role, email, email_verified_at, created_at, updated_at) VALUES (${quote(ownerId)}, ${name}, 'owner', ${quote(ownerEmail)}, ${quote(token.now)}, ${quote(token.now)}, ${quote(token.now)});`
   return [
     siteRow(site, token.now, structure),
     user,
@@ -236,7 +233,7 @@ export interface NewInvitation {
   id: string
   site: string
   hash: string
-  role: 'owner' | 'editor' | 'author'
+  role: 'owner' | 'admin' | 'editor' | 'author' | 'reviewer'
   userId: string | null
   expiresAt: string
   now: string
@@ -261,11 +258,11 @@ export function parseInvitationId(value: string): string {
 }
 
 export function listInvitations(site: string, now: string): string {
-  return `SELECT id, role, email, expires_at FROM invitations WHERE site_id = ${quote(site)} AND used_at IS NULL AND expires_at > ${quote(now)} ORDER BY created_at, id;`
+  return `SELECT id, role, email, expires_at FROM invitations WHERE site_id = ${quote(site)} AND used_at IS NULL AND revoked_at IS NULL AND expires_at > ${quote(now)} ORDER BY created_at, id;`
 }
 
 export function revokeInvitation(id: string, site: string, now: string): string {
-  return `UPDATE invitations SET expires_at = ${quote(now)}, updated_at = ${quote(now)} WHERE id = ${quote(id)} AND site_id = ${quote(site)} AND used_at IS NULL AND expires_at > ${quote(now)} RETURNING id;`
+  return `UPDATE invitations SET revoked_at = ${quote(now)}, updated_at = ${quote(now)} WHERE id = ${quote(id)} AND site_id = ${quote(site)} AND used_at IS NULL AND revoked_at IS NULL RETURNING id;`
 }
 
 export function listTokens(site: string): string {

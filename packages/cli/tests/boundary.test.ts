@@ -85,7 +85,10 @@ describe('the CLI never loads hollware.config.ts', () => {
       '\n Migrations to be applied:\n┌──────────────────┐\n│ Name             │\n├──────────────────┤\n│ 0001_core.sql    │\n└──────────────────┘\n'
 
     const commands: [string[], ReturnType<typeof fakeWrangler>][] = [
-      [['init', '--site', 'blog'], fakeWrangler(d1([]), d1([], [], []))],
+      [
+        ['init', '--owner-email', 'olga@example.com', '--site', 'blog'],
+        fakeWrangler(d1([]), d1([], [], [])),
+      ],
       [['migrate', '--check'], fakeWrangler({ code: 0, stdout: list, stderr: '' })],
       [['token', 'create', '--label', 'ci'], fakeWrangler(d1([{ id: 'blog' }], owner), d1([]))],
       [['token', 'list'], fakeWrangler(d1([{ id: 'blog' }]), d1([]))],

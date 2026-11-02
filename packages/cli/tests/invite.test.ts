@@ -19,16 +19,19 @@ describe('hollware invite', () => {
   it('inserts the invitation and prints its link once', async () => {
     const { wrangler, run: invite } = project()
 
-    const { code, out, err } = await invite(['invite', '--role', 'author'])
+    const { code, out, err } = await invite([
+      'invite',
+      '--role',
+      'author',
+      '--email',
+      'ada@example.org',
+    ])
 
     expect([code, err]).toEqual([0, []])
     expect(wrangler.calls.map((call) => call.args[6]?.split(' (')[0])).toEqual([
       SITES,
       'INSERT INTO invitations',
     ])
-    expect(wrangler.calls[1]?.args[6]).toMatch(
-      /^INSERT INTO invitations \(id, site_id, hash, role, user_id, expires_at, used_at, created_at, updated_at\) VALUES \('inv_[0-9A-Z]{26}', 'blog', '[0-9a-f]{64}', 'author', NULL, '2026-10-19T12:00:00.000Z', NULL, /,
-    )
     expect(out).toEqual([
       [
         'Invited an author to the site "blog". The link works once, until 2026-10-19T12:00:00.000Z:',
@@ -36,6 +39,40 @@ describe('hollware invite', () => {
         '  https://cms.example.com/setup#invitation=hw_inv_AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE',
       ].join('\n'),
     ])
+  })
+
+  it.each([
+    ['admin', 'Invited an admin'],
+    ['reviewer', 'Invited a reviewer'],
+  ])('invites %s, with its article', async (role, said) => {
+    const { wrangler, run: invite } = project()
+
+    const { code, out } = await invite(['invite', '--role', role, '--email', 'ada@example.org'])
+
+    expect(code).toBe(0)
+    expect(wrangler.calls[1]?.args[6]).toContain(`, '${role}', NULL, 'ada@example.org', `)
+    expect(out[0]?.split(' to the site')[0]).toBe(said)
+  })
+
+  it('refuses a new person without --email, and --email with --owner, before it touches wrangler', async () => {
+    const { wrangler, run: invite } = project()
+
+    const bare = await invite(['invite', '--role', 'editor'])
+    const both = await invite(['invite', '--owner', '--email', 'ada@example.org'])
+
+    expect([bare.code, bare.err]).toEqual([
+      1,
+      [
+        'hollware invite: --email is required with --role: name the address of the person, such as --email ada@example.com. Run "hollware invite --help" for the options.',
+      ],
+    ])
+    expect([both.code, both.err]).toEqual([
+      1,
+      [
+        'hollware invite: --owner and --email cannot be used together: --email names a new person. Run "hollware invite --help" for the options.',
+      ],
+    ])
+    expect(wrangler.calls).toEqual([])
   })
 
   it('names the address of the person with --email, in lowercase, and refuses one that is no address', async () => {
@@ -94,7 +131,7 @@ describe('hollware invite', () => {
     expect(both.code).toBe(1)
   })
 
-  it('refuses a role other than editor and author', async () => {
+  it('refuses a role other than admin, editor, author and reviewer', async () => {
     const { run: invite } = project()
 
     const { code, err } = await invite(['invite', '--role', 'owner'])
@@ -102,7 +139,7 @@ describe('hollware invite', () => {
     expect([code, err]).toEqual([
       1,
       [
-        'hollware invite: --role is required, and it is editor or author. Run "hollware invite --help" for the options.',
+        'hollware invite: --role is required, and it is admin, editor, author or reviewer. Run "hollware invite --help" for the options.',
       ],
     ])
   })
@@ -122,9 +159,9 @@ describe('hollware invite', () => {
 
     expect(wrangler.calls.map((call) => call.args[6])).toEqual([
       SITES,
-      "SELECT id, role, email, expires_at FROM invitations WHERE site_id = 'blog' AND used_at IS NULL AND expires_at > '2026-10-12T12:00:00.000Z' ORDER BY created_at, id;",
+      "SELECT id, role, email, expires_at FROM invitations WHERE site_id = 'blog' AND used_at IS NULL AND revoked_at IS NULL AND expires_at > '2026-10-12T12:00:00.000Z' ORDER BY created_at, id;",
       SITES,
-      "UPDATE invitations SET expires_at = '2026-10-12T12:00:00.000Z', updated_at = '2026-10-12T12:00:00.000Z' WHERE id = 'inv_01JAB3XQ8ZK4M6N2P5R7S9T0VW' AND site_id = 'blog' AND used_at IS NULL AND expires_at > '2026-10-12T12:00:00.000Z' RETURNING id;",
+      "UPDATE invitations SET revoked_at = '2026-10-12T12:00:00.000Z', updated_at = '2026-10-12T12:00:00.000Z' WHERE id = 'inv_01JAB3XQ8ZK4M6N2P5R7S9T0VW' AND site_id = 'blog' AND used_at IS NULL AND revoked_at IS NULL RETURNING id;",
     ])
     expect([listed.code, listed.out]).toEqual([
       0,

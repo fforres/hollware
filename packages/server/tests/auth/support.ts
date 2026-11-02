@@ -1,7 +1,9 @@
 import { generatePersonalToken, generateReadToken, hashPersonalToken, newId } from '@hollware/core'
 
+import { legacyRoleOf, type Role } from '../../src/auth/roles.ts'
+
 export interface SeedTokenOptions {
-  readonly role?: 'owner' | 'editor' | 'author'
+  readonly role?: Role
   readonly scopes?: readonly string[]
   readonly expiresAt?: string | null
   readonly revokedAt?: string | null
@@ -40,12 +42,7 @@ export async function seedToken(
       .prepare(
         'INSERT INTO users (id, name, role, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?4)',
       )
-      .bind(
-        userId,
-        'Test user',
-        options.role === 'author' ? 'reviewer' : (options.role ?? 'owner'),
-        CREATED,
-      ),
+      .bind(userId, 'Test user', legacyRoleOf(options.role ?? 'owner'), CREATED),
     db
       .prepare(
         'INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)',
@@ -66,7 +63,7 @@ export async function seedToken(
           options.scopes ??
             (read
               ? ['content:read']
-              : ['content:read', 'content:write', 'content:publish', 'schema:admin']),
+              : ['content:read', 'content:write', 'content:publish', 'schema:admin', 'site:owner']),
         ),
         options.expiresAt ?? null,
         options.revokedAt ?? null,

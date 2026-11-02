@@ -117,7 +117,14 @@ describe('AC-0.1-16: init and tokens', () => {
   let url: string
 
   it('init creates the site, its owner and a token with every scope, printed once', async () => {
-    const initialized = await project.hollware('init', '--local', '--site', SITE_KEY)
+    const initialized = await project.hollware(
+      'init',
+      '--local',
+      '--site',
+      SITE_KEY,
+      '--owner-email',
+      'olga@example.com',
+    )
 
     expect(initialized.code).toBe(0)
     ownerToken = readToken(initialized.output)
@@ -127,7 +134,7 @@ describe('AC-0.1-16: init and tokens', () => {
       'Site     playground',
       'Owner    <usr>',
       'Token    <tok>',
-      'Scopes   content:read content:write content:publish schema:admin review:read review:comment',
+      'Scopes   content:read content:write content:publish schema:admin site:owner review:read review:comment',
       'Expires  <time> (in 90 days)',
       '',
       'Your personal token. It is shown only once: Hollware keeps just its hash.',
@@ -135,18 +142,18 @@ describe('AC-0.1-16: init and tokens', () => {
       '<token>',
     ])
     const [sites, users, tokens] = await project.query(
-      'SELECT id FROM sites; SELECT role FROM users; SELECT site_id, label, revoked_at, scopes, length(hash) AS hash FROM tokens',
+      'SELECT id FROM sites; SELECT role, email FROM users; SELECT site_id, label, revoked_at, scopes, length(hash) AS hash FROM tokens',
     )
     expect([sites, users, tokens]).toEqual([
       [{ id: 'playground' }],
-      [{ role: 'owner' }],
+      [{ role: 'owner', email: 'olga@example.com' }],
       [
         {
           site_id: 'playground',
           label: 'hollware init',
           revoked_at: null,
           scopes:
-            '["content:read","content:write","content:publish","schema:admin","review:read","review:comment"]',
+            '["content:read","content:write","content:publish","schema:admin","site:owner","review:read","review:comment"]',
           hash: 64,
         },
       ],
@@ -196,7 +203,7 @@ describe('AC-0.1-16: init and tokens', () => {
         'active',
         '<time>',
         'never',
-        'content:read content:write content:publish schema:admin review:read review:comment',
+        'content:read content:write content:publish schema:admin site:owner review:read review:comment',
       ],
       ['<tok>', 'acceptance reader', 'owner', 'active', '<time>', usedOrNot, 'content:read'],
     ])

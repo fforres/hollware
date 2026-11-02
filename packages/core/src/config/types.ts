@@ -124,7 +124,7 @@ export interface SiteDefinition {
     readonly autoProvision?: {
       readonly domains?: readonly string[]
       readonly emails?: readonly string[]
-      readonly role?: 'author' | 'editor'
+      readonly role?: ProvisionRole
     } | null
   }
   /** What the site's activity log keeps: no addresses, and forever, by default. */
@@ -329,12 +329,15 @@ export interface ResolvedReview {
   readonly requireAgents: boolean
 }
 
+/** The roles a site may give whoever it lets in without an invitation. */
+export type ProvisionRole = 'reviewer' | 'author' | 'editor'
+
 /** Who comes in through a sign-in provider without an invitation, with lowercase addresses. */
 export interface ResolvedAccess {
   readonly autoProvision: {
     readonly domains: readonly string[]
     readonly emails: readonly string[]
-    readonly role: 'author' | 'editor'
+    readonly role: ProvisionRole
   } | null
 }
 

@@ -17,10 +17,11 @@ import {
   type ResolvedSite,
   type Scope,
 } from '@hollware/core'
-import { and, desc, eq, gt, isNull } from 'drizzle-orm'
+import { and, desc, eq, isNull } from 'drizzle-orm'
 import type { Context, Hono } from 'hono'
 import { insufficientScope } from '../auth/index.ts'
-import { isRole, ROLE_SCOPES } from '../auth/roles.ts'
+import { isRole, mayAssign, ROLES, type Role } from '../auth/roles.ts'
+import { languageOf, sendInvitation } from '../identity/invitation-mail.ts'
 import { anonymizePerson, formerPeople } from '../identity/anonymize.ts'
 import { removeMember, setRole, type PeopleChange } from '../identity/people.ts'
 import type { Principal, RequestPrincipal } from '../auth/types.ts'
@@ -37,12 +38,14 @@ import {
   cleanName,
   createInvitation,
   endSessions,
+  markSent,
   identitiesOf,
   MAX_NAME_LENGTH,
   membershipsOf,
   passkeySummaries,
   removePasskey,
   renamePasskey,
+  renewInvitation,
   revokeInvitation,
   renameUser,
 } from '../identity/store.ts'
@@ -57,11 +60,12 @@ import {
 } from '../audit/read.ts'
 import type { OAuth, Proceed } from '../oauth/server.ts'
 import type { Clock } from '../ports.ts'
-import type { GatewayEnv } from './types.ts'
+import type { GatewayEnv, GatewayLogEntry } from './types.ts'
 import * as agentsApi from './agents-api.ts'
 import type { GrantSummary, OAuthHelpers } from '@cloudflare/workers-oauth-provider'
 
 const INVITATION_DAYS = 7
+const INVITABLE = ['admin', 'editor', 'author', 'reviewer'] as const
 const ACTIVITY_PAGE = 50
 const DELIVERIES_PAGE = 50
 const ACTIVITY_CSV_MAX = 10_000
@@ -75,6 +79,7 @@ export interface AdminApiOptions {
   readonly oauth: (publicUrl: string) => OAuth
   readonly protect: (c: Context<GatewayEnv>, proceed: Proceed) => Promise<Response>
   readonly metadataUrl: (c: Context<GatewayEnv>) => string
+  readonly log?: (entry: GatewayLogEntry) => void
 }
 
 function json(body: unknown, status = 200): Response {
@@ -243,7 +248,8 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
       {
         anyone = false,
         everySite = false,
-      }: { readonly anyone?: boolean; readonly everySite?: boolean } = {},
+        owner = false,
+      }: { readonly anyone?: boolean; readonly everySite?: boolean; readonly owner?: boolean } = {},
     ) =>
     (c: Context<GatewayEnv>) =>
       options.protect(c, async (principal) => {
@@ -259,6 +265,9 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           }
           if (!anyone && !principal.scopes.includes('schema:admin')) {
             return insufficientScope(['schema:admin'], options.metadataUrl(c))
+          }
+          if (owner && !principal.scopes.includes('site:owner')) {
+            return insufficientScope(['site:owner'], options.metadataUrl(c))
           }
           return handle(c, principal, note)
         })()
@@ -517,6 +526,9 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
     }),
   )
 
+  const invitable = (scopes: readonly Scope[]) =>
+    INVITABLE.filter((role) => mayAssign(scopes, role))
+
   app.get(
     '/v1/admin/people',
     admin(null, async (c, person) => {
@@ -535,27 +547,35 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
         .innerJoin(users, eq(users.id, members.userId))
         .where(eq(members.siteId, person.site))
         .orderBy(members.createdAt, users.id)
-      const pending = await db
+      const open = await db
         .select({
           id: invitations.id,
           role: invitations.role,
           email: invitations.email,
           expiresAt: invitations.expiresAt,
+          sentAt: invitations.sentAt,
         })
         .from(invitations)
         .where(
           and(
             eq(invitations.siteId, person.site),
             isNull(invitations.usedAt),
+            isNull(invitations.revokedAt),
             isNull(invitations.userId),
-            gt(invitations.expiresAt, now),
           ),
         )
         .orderBy(desc(invitations.createdAt))
       return json({
         people,
-        invitations: pending,
+        invitations: open.map((row) => ({
+          ...row,
+          status: row.expiresAt > now ? 'waiting' : 'expired',
+        })),
         former: await formerPeople(c.env.DB, person.site),
+        invite: {
+          roles: invitable(person.scopes),
+          mail: mailerOf(c) !== null,
+        },
       })
     }),
   )
@@ -577,6 +597,12 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           'Make another person an owner first, then change this one.',
           409,
         )
+      case 'owner_only':
+        return refused(
+          'Only an owner names, changes or removes an owner.',
+          'Ask an owner of the site to do it.',
+          403,
+        )
       case 'agent':
         return refused(
           'An agent member is an author, and its role does not change.',
@@ -595,13 +621,21 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
       if (typeof userId !== 'string' || typeof role !== 'string' || !isRole(role)) {
         return refused(
           'Give the userId of a member and a role.',
-          `Send { "userId": "usr_…", "role": "owner" | "editor" | "author" }.`,
+          `Send { "userId": "usr_…", "role": ${ROLES.map((one) => `"${one}"`).join(' | ')} }.`,
         )
       }
       const now = options.clock.now().toISOString()
       note.target = { type: 'user', id: userId }
       note.detail = { role }
-      return answerOf(await setRole(c.env.DB, { site: person.site, userId, role, now }))
+      return answerOf(
+        await setRole(c.env.DB, {
+          site: person.site,
+          userId,
+          role,
+          now,
+          owners: person.scopes.includes('site:owner'),
+        }),
+      )
     }),
   )
 
@@ -613,89 +647,213 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
         return refused('Give the userId of a member.', 'Send { "userId": "usr_…" }.')
       }
       note.target = { type: 'user', id: userId }
-      return answerOf(await removeMember(c.env.DB, { site: person.site, userId }))
+      return answerOf(
+        await removeMember(c.env.DB, {
+          site: person.site,
+          userId,
+          owners: person.scopes.includes('site:owner'),
+        }),
+      )
     }),
   )
 
   app.post(
     '/v1/admin/people/anonymize',
-    admin('member.anonymize', async (c, person) => {
-      const userId = (await body(c))['userId']
-      if (typeof userId !== 'string') {
-        return refused('Give the userId of a former member.', 'Send { "userId": "usr_…" }.')
-      }
-      const outcome = await anonymizePerson(c.env.DB, {
-        site: person.site,
-        userId,
-        now: options.clock.now().toISOString(),
-      })
-      if (outcome === 'member') {
-        return refused(
-          'That person is still a member of this site.',
-          'Remove them from the site first, then anonymize them.',
-          409,
-        )
-      }
-      if (outcome === 'not_found') {
-        return refused(
-          'No former member of this site has that id.',
-          'Pick someone from the former members of the site.',
-          404,
-        )
-      }
-      const { helpers } = await grantsApi(c)
-      for (const grant of await grantsOf(helpers, userId)) {
-        if (outcome === 'gone' || siteOf(grant.metadata) === person.site) {
-          await helpers.revokeGrant(grant.id, userId)
+    admin(
+      'member.anonymize',
+      async (c, person) => {
+        const userId = (await body(c))['userId']
+        if (typeof userId !== 'string') {
+          return refused('Give the userId of a former member.', 'Send { "userId": "usr_…" }.')
         }
-      }
-      return json({ outcome })
-    }),
+        const outcome = await anonymizePerson(c.env.DB, {
+          site: person.site,
+          userId,
+          now: options.clock.now().toISOString(),
+        })
+        if (outcome === 'member') {
+          return refused(
+            'That person is still a member of this site.',
+            'Remove them from the site first, then anonymize them.',
+            409,
+          )
+        }
+        if (outcome === 'not_found') {
+          return refused(
+            'No former member of this site has that id.',
+            'Pick someone from the former members of the site.',
+            404,
+          )
+        }
+        const { helpers } = await grantsApi(c)
+        for (const grant of await grantsOf(helpers, userId)) {
+          if (outcome === 'gone' || siteOf(grant.metadata) === person.site) {
+            await helpers.revokeGrant(grant.id, userId)
+          }
+        }
+        return json({ outcome })
+      },
+      { owner: true },
+    ),
   )
+
+  const mailerOf = (c: Context<GatewayEnv>) =>
+    c.env.EMAIL === undefined || (c.env.HOLLWARE_EMAIL_FROM ?? '').trim() === ''
+      ? null
+      : { mailer: c.env.EMAIL, from: c.env.HOLLWARE_EMAIL_FROM }
+
+  const deliver = async (
+    c: Context<GatewayEnv>,
+    person: Extract<Principal, { kind: 'oauth' }>,
+    made: {
+      readonly id: string
+      readonly secret: string
+      readonly expiresAt: string
+      readonly role: Exclude<Role, 'owner'>
+      readonly email: string | null
+    },
+    language: unknown,
+  ): Promise<Response> => {
+    const link = `${options.oauth(c.env.HOLLWARE_PUBLIC_URL).issuer}/setup#invitation=${made.secret}`
+    const view = { id: made.id, role: made.role, email: made.email, expiresAt: made.expiresAt }
+    const mail = mailerOf(c)
+    if (made.email === null || mail === null) return json({ ...view, sent: false, link }, 201)
+    const [inviter] = await connect(c.env.DB)
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, person.userId))
+    const site = options.site(person.site)
+    const sent = await sendInvitation(mail.mailer, mail.from, {
+      to: made.email,
+      link,
+      site: site?.url === null || site?.url === undefined ? person.site : new URL(site.url).host,
+      inviter: inviter?.name ?? 'Hollware',
+      role: made.role,
+      expiresAt: made.expiresAt,
+      language: languageOf(language),
+    })
+    if (sent.outcome !== 'sent') {
+      if (sent.outcome === 'failed') {
+        options.log?.({
+          kind: 'invitation_mail_failed',
+          requestId: c.get('requestId'),
+          invitation: made.id,
+          reason: sent.reason,
+        })
+      }
+      return json({ ...view, sent: false, link }, 201)
+    }
+    await markSent(connect(c.env.DB), made.id, options.clock.now())
+    return json({ ...view, sent: true }, 201)
+  }
 
   app.post(
     '/v1/admin/invitations',
     admin('invitation.create', async (c, person, note) => {
       const input = await body(c)
       const role = input['role']
-      if (typeof role !== 'string' || !isRole(role) || role === 'owner') {
+      const roles = invitable(person.scopes)
+      if (typeof role !== 'string' || !roles.some((one) => one === role)) {
         return refused(
-          'An invitation is for an editor or an author.',
-          `Use role "editor" (${ROLE_SCOPES.editor.join(', ')}) or "author" (${ROLE_SCOPES.author.join(', ')}).`,
+          `An invitation is for ${roles.map((one) => `"${one}"`).join(', ')}.`,
+          'An owner is made from the list of people, out of a member of the site.',
         )
       }
+      const invited = roles.find((one) => one === role) ?? 'reviewer'
       const days = invitationDays(input['days'], INVITATION_DAYS)
       if (days === null)
         return refused('days is a whole number from 1 to 365.', 'Leave it out for 7 days.')
       const asked = input['email']
-      const blank = asked === undefined || asked === null || asked === ''
-      const email = !blank && typeof asked === 'string' ? emailAddress(asked) : null
-      if (!blank && email === null) {
+      const email = typeof asked === 'string' ? emailAddress(asked) : null
+      if (email === null) {
         return refused(
-          'email is not an email address.',
-          'Send the address the person signs in with, such as "ada@example.com", or leave it out.',
+          'An invitation names the email address of the person.',
+          'Send the address, such as "ada@example.com": it is how Hollware knows them, and they may sign in with it later.',
         )
       }
-      const made = await createInvitation(connect(c.env.DB), {
+      const db = connect(c.env.DB)
+      const [member] = await db
+        .select({ id: users.id })
+        .from(members)
+        .innerJoin(users, eq(users.id, members.userId))
+        .where(and(eq(members.siteId, person.site), eq(users.email, email)))
+        .limit(1)
+      if (member !== undefined) {
+        return refused(
+          'That address is already a member of this site.',
+          'Change their role in the list of people instead.',
+          409,
+        )
+      }
+      const [open] = await db
+        .select({ id: invitations.id })
+        .from(invitations)
+        .where(
+          and(
+            eq(invitations.siteId, person.site),
+            eq(invitations.email, email),
+            isNull(invitations.usedAt),
+            isNull(invitations.revokedAt),
+          ),
+        )
+        .limit(1)
+      if (open !== undefined) {
+        return refused(
+          'That address already has an invitation to this site.',
+          `Renew it (POST /v1/admin/invitations/${open.id}/renew), or revoke it first.`,
+          409,
+        )
+      }
+      const made = await createInvitation(db, {
         site: person.site,
-        role,
+        role: invited,
         userId: null,
         now: options.clock.now(),
         days,
         email,
       })
       note.target = { type: 'invitation', id: made.id }
-      note.detail = email === null ? { role, days } : { role, days, email: true }
-      const origin = options.oauth(c.env.HOLLWARE_PUBLIC_URL).issuer
-      return json(
+      note.detail = { role: invited, days }
+      return deliver(c, person, { ...made, role: invited, email }, input['language'])
+    }),
+  )
+
+  app.post(
+    '/v1/admin/invitations/:id/renew',
+    admin('invitation.renew', async (c, person, note) => {
+      const id = c.req.param('id') ?? ''
+      note.target = { type: 'invitation', id }
+      const input = await body(c)
+      const days = invitationDays(input['days'], INVITATION_DAYS)
+      if (days === null)
+        return refused('days is a whole number from 1 to 365.', 'Leave it out for 7 days.')
+      const renewed = await renewInvitation(connect(c.env.DB), {
+        site: person.site,
+        id,
+        now: options.clock.now(),
+        days,
+      })
+      if (renewed === null) {
+        return refused(
+          'There is no open invitation with that id.',
+          'List the people of the site and pick an invitation that waits or expired.',
+          404,
+        )
+      }
+      const role = renewed.invitation.role
+      if (role === 'owner')
+        return refused('That invitation is no longer open.', 'Make a new one.', 404)
+      return deliver(
+        c,
+        person,
         {
-          id: made.id,
+          id,
+          secret: renewed.secret,
+          expiresAt: renewed.expiresAt,
           role,
-          email,
-          expiresAt: made.expiresAt,
-          link: `${origin}/setup#invitation=${made.secret}`,
+          email: renewed.invitation.email,
         },
-        201,
+        input['language'],
       )
     }),
   )
@@ -713,8 +871,8 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
       return revoked
         ? json({ outcome: 'revoked' })
         : refused(
-            'There is no waiting invitation with that id.',
-            'List the people of the site and pick an invitation that waits.',
+            'There is no open invitation with that id.',
+            'List the people of the site and pick an invitation that waits or expired.',
             404,
           )
     }),
@@ -722,27 +880,31 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
 
   app.post(
     '/v1/admin/entries/:id/purge',
-    admin('entry.purge', async (c, person, note) => {
-      const id = c.req.param('id') ?? ''
-      note.target = { type: 'entry', id }
-      const outcome = await purgeEntry(c.env.DB, {
-        site: person.site,
-        entryId: id,
-        purgedBy: person.userId,
-        now: options.clock.now().toISOString(),
-      })
-      if (outcome === 'not_found') {
-        return refused('This site has no entry with that id.', 'Pick an entry of its trash.', 404)
-      }
-      if (outcome === 'not_in_trash') {
-        return refused(
-          'Only an entry in the trash is deleted for ever.',
-          'Move it to the trash first; a published one is unpublished before.',
-          409,
-        )
-      }
-      return json({ outcome: 'purged' })
-    }),
+    admin(
+      'entry.purge',
+      async (c, person, note) => {
+        const id = c.req.param('id') ?? ''
+        note.target = { type: 'entry', id }
+        const outcome = await purgeEntry(c.env.DB, {
+          site: person.site,
+          entryId: id,
+          purgedBy: person.userId,
+          now: options.clock.now().toISOString(),
+        })
+        if (outcome === 'not_found') {
+          return refused('This site has no entry with that id.', 'Pick an entry of its trash.', 404)
+        }
+        if (outcome === 'not_in_trash') {
+          return refused(
+            'Only an entry in the trash is deleted for ever.',
+            'Move it to the trash first; a published one is unpublished before.',
+            409,
+          )
+        }
+        return json({ outcome: 'purged' })
+      },
+      { owner: true },
+    ),
   )
 
   app.get(

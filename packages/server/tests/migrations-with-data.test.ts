@@ -95,7 +95,7 @@ it('runs every migration after 0003 over the content of a deployment, and keeps 
     if (file.startsWith('0008')) for (const statement of PUBLISHED) db.exec(statement)
     if (file.startsWith('0021')) for (const statement of REVIEWS) db.exec(statement)
     if (file.startsWith('0028')) for (const statement of CHALLENGES) db.exec(statement)
-    if (file.startsWith('0032')) for (const statement of ASSETS) db.exec(statement)
+    if (file.startsWith('0033')) for (const statement of ASSETS) db.exec(statement)
     db.exec('BEGIN')
     for (const statement of statementsOf(file)) db.exec(statement)
     db.exec('COMMIT')

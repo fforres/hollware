@@ -65,7 +65,7 @@ serve them. Boundary rules for this package:
   `readBearerToken`, then `checkPersonalToken` on the `D1Database` binding, never a replica
   session, so a revoked token stops at once. Hand its `touch` to `ctx.waitUntil`. A refused token
   gets one answer whether it was unknown, expired or revoked: log the reason, never send it.
-  `ROLE_SCOPES` has one entry per role of the `users_role` check: owner, editor, author.
+  `ROLE_SCOPES` has a role per `members_role`; only `site:owner` parts an owner from an admin.
 - `src/oauth` is the OAuth server, built once per public URL: an
   `OAuthAuthorizationServer` and an `OAuthResourceServer` each for `/mcp` and `/v1`. The resource
   server validates a token by its shape: `hw_pat_…` goes to `checkPersonalToken`, anything else to

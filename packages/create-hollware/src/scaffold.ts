@@ -33,7 +33,7 @@ export interface Io {
 }
 
 export const USAGE = [
-  'Usage: npm create hollware [<dir>] [options]',
+  'Usage: npm create hollware [<dir>] --owner-email <address> [options]',
   '',
   'Creates a Hollware project in <dir>: a config, a Worker and the Wrangler config that binds',
   'its database. Then it installs the dependencies, applies the migrations to the local database',
@@ -55,7 +55,8 @@ export const USAGE = [
   '                   (site, ownerId, tokenId, token or tokenFile, expiresAt, setupUrl, mcpUrl,',
   '                   readApiUrl), the commands to start it and the MCP configuration',
   '  --owner-email <address>',
-  '                   The address the owner signs in with through a provider',
+  '                   The address of the owner, required unless --no-install: Hollware knows them',
+  '                   by it, and they may sign in with it through a provider',
   '  --auth <kind>    Sign in through google, microsoft, github, oidc or cloudflare-access, with:',
   '  --client-id <id> The client id of the app registered with the provider (not Access); its',
   '                   secret is the Worker secret <KIND>_CLIENT_SECRET, set with wrangler secret put',
@@ -204,6 +205,12 @@ export function readChoices(argv: readonly string[]): Choices {
   }
   const pm = values.pm ?? 'npm'
   if (pm !== 'npm' && pm !== 'pnpm') throw new UsageError(`--pm is npm or pnpm, not "${pm}"`)
+  const provider = providerOf(values)
+  if (values['owner-email'] === undefined && values['no-install'] !== true) {
+    throw new UsageError(
+      'pass --owner-email with your address, such as --owner-email ada@example.com: the owner of the site is known by it',
+    )
+  }
   return {
     dir,
     name,
@@ -220,9 +227,10 @@ export function readChoices(argv: readonly string[]): Choices {
       ...(values['audit-retention-days'] === undefined
         ? []
         : ['--audit-retention-days', values['audit-retention-days']]),
-      ...(values['owner-email'] === undefined ? [] : ['--owner-email', values['owner-email']]),
+      '--owner-email',
+      values['owner-email'] ?? 'you@example.com',
     ],
-    provider: providerOf(values),
+    provider,
   }
 }
 

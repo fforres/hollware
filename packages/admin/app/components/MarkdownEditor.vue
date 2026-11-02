@@ -9,7 +9,11 @@ import type { Diagnostic } from '../lib/diagnostics.ts'
 import { useMessages } from '../i18n/index.ts'
 import { theme } from './editor-theme.ts'
 
-const props = defineProps<{ modelValue: string; diagnostics: readonly Diagnostic[] }>()
+const props = defineProps<{
+  modelValue: string
+  diagnostics: readonly Diagnostic[]
+  readonly?: boolean
+}>()
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
 const host = ref<HTMLElement | null>(null)
@@ -26,6 +30,8 @@ function stateOf(text: string): EditorState {
       lintGutter(),
       EditorState.lineSeparator.of(text.includes('\r\n') ? '\r\n' : '\n'),
       EditorView.lineWrapping,
+      EditorState.readOnly.of(props.readonly === true),
+      EditorView.editable.of(props.readonly !== true),
       theme,
       EditorView.contentAttributes.of({ 'aria-label': m.value.editor.markdown }),
       EditorView.updateListener.of((update) => {

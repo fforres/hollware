@@ -141,7 +141,14 @@ export function createProject(): Project {
 export async function setUpProject(project: Project): Promise<string> {
   const migrated = await project.hollware('migrate', '--local')
   if (migrated.code !== 0) throw new Error(`hollware migrate failed:\n${migrated.output}`)
-  const initialized = await project.hollware('init', '--local', '--site', SITE_KEY)
+  const initialized = await project.hollware(
+    'init',
+    '--local',
+    '--site',
+    SITE_KEY,
+    '--owner-email',
+    'olga@example.com',
+  )
   if (initialized.code !== 0) throw new Error(`hollware init failed with ${initialized.code}`)
   return readToken(initialized.output)
 }

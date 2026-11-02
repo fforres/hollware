@@ -32,7 +32,11 @@ describe('create-hollware --help', () => {
       const { code, out, err } = await run(argv)
       expect(code).toBe(0)
       expect(err).toEqual([])
-      expect(out).toEqual([expect.stringContaining('Usage: npm create hollware [<dir>] [options]')])
+      expect(out).toEqual([
+        expect.stringContaining(
+          'Usage: npm create hollware [<dir>] --owner-email <address> [options]',
+        ),
+      ])
     }
   })
 
