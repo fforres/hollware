@@ -69,7 +69,14 @@ export async function seed(options: {
     return result.output
   }
   await run(['migrate', '--local'])
-  const initialized = await run(['init', '--local', '--site', SITE_KEY])
+  const initialized = await run([
+    'init',
+    '--local',
+    '--site',
+    SITE_KEY,
+    '--owner-email',
+    'olga@example.com',
+  ])
   const readOnly = await run([
     'token',
     'create',

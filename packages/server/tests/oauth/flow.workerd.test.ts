@@ -212,6 +212,7 @@ describe('the metadata of the OAuth server', () => {
         'content:write',
         'content:publish',
         'schema:admin',
+        'site:owner',
         'review:read',
         'review:comment',
       ],

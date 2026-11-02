@@ -363,11 +363,16 @@ export const THREATS: readonly Threat[] = [
     id: 'T-28',
     area: 'Tokens',
     threat: 'An invitation makes an owner',
-    mitigation: 'Editor or author only',
+    mitigation:
+      'Admin, editor, author or reviewer only; an owner is made from a member, by an owner',
     guards: [
       {
         file: 'packages/server/tests/http/admin-api.workerd.test.ts',
         test: 'invite an editor or an author with a link to /setup, and never an owner',
+      },
+      {
+        file: 'packages/server/tests/http/invitations.workerd.test.ts',
+        test: 'let an admin invite up to an admin, and never an owner',
       },
     ],
   },
@@ -1153,7 +1158,7 @@ export const THREATS: readonly Threat[] = [
     area: 'Structure operations',
     threat: 'A non-owner changes the structure',
     mitigation:
-      'Only the owner role allows `schema:admin`; the scope check runs before the handler',
+      'Only the owner and admin roles allow `schema:admin`; the scope check runs before the handler',
     guards: [
       {
         file: 'packages/core/tests/operations.test.ts',
@@ -1161,7 +1166,7 @@ export const THREATS: readonly Threat[] = [
       },
       {
         file: 'packages/server/tests/auth/roles.test.ts',
-        test: 'gives the owner every scope, an editor the content, and an author all but publishing',
+        test: 'gives the owner every scope, an admin all but site:owner, an editor the content, an author all but publishing and a reviewer reading and comments',
       },
       {
         file: 'packages/server/tests/mcp/scopes.test.ts',
@@ -1546,7 +1551,7 @@ export const THREATS: readonly Threat[] = [
     area: 'Sign-in',
     threat: 'Anyone with an account of a provider becomes a member of a site',
     mitigation:
-      'A person who is not known and has no invitation becomes a member only of a site whose `access.autoProvision` lists their exact address or its domain (never a subdomain), and only as an author or editor; otherwise the answer is a 403 page',
+      'A person who is not known and has no invitation becomes a member only of a site whose `access.autoProvision` lists their exact address or its domain (never a subdomain), and only as a reviewer, an author or an editor; otherwise the answer is a 403 page',
     guards: [
       {
         file: 'packages/server/tests/identity/federation.workerd.test.ts',
@@ -1728,6 +1733,66 @@ export const THREATS: readonly Threat[] = [
       {
         file: 'packages/cli/tests/agent.test.ts',
         test: 'revokes the live grants and tokens and deletes the membership of an agent only',
+      },
+    ],
+  },
+  {
+    id: 'T-134',
+    area: 'People',
+    threat:
+      'An admin takes the site from its owners: names an owner, demotes or removes one, deletes the site or its entries for ever, or reads its backups',
+    mitigation:
+      "An admin has every scope of an owner but `site:owner`: naming, changing or removing an owner, purging an entry, anonymizing a person, the site's deletion and restoration and its backups ask for it",
+    guards: [
+      {
+        file: 'packages/server/tests/http/invitations.workerd.test.ts',
+        test: 'let an admin change and remove anyone but an owner, and name no owner',
+      },
+      {
+        file: 'packages/server/tests/http/invitations.workerd.test.ts',
+        test: 'keep the deletion of entries and the anonymizing of people for an owner',
+      },
+      {
+        file: 'packages/server/tests/backup/backup.workerd.test.ts',
+        test: 'serves a backup to an owner of the site, and to no one else, from BACKUPS before MEDIA',
+      },
+      {
+        file: 'packages/core/tests/operations.test.ts',
+        test: 'have the effects, scopes and outcomes of the operations table',
+      },
+    ],
+  },
+  {
+    id: 'T-135',
+    area: 'People',
+    threat:
+      'An invitation lands on the wrong account: a second account for a person of this Hollware, a link accepted by another person, or an address taken from someone who has it',
+    mitigation:
+      'Every invitation of a new person names an address, and the account it makes keeps it; a person accepts with the passkey they have (`accept`), and a link for a named person takes only theirs; an address becomes verified only when Hollware mailed the link and showed it to nobody, or when its provider says so, and an address that has an account sends its person to their passkey',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/ceremonies.workerd.test.ts',
+        test: 'makes a person of this Hollware a member of another site with the passkey they have, once',
+      },
+      {
+        file: 'packages/server/tests/identity/ceremonies.workerd.test.ts',
+        test: 'refuses a revoked invitation, a challenge of a sign-in, and a link made for someone else',
+      },
+      {
+        file: 'packages/server/tests/identity/ceremonies.workerd.test.ts',
+        test: 'gives the new person its address, verified only when Hollware mailed the link',
+      },
+      {
+        file: 'packages/server/tests/identity/ceremonies.workerd.test.ts',
+        test: 'refuses an invitation of a new person that names no address',
+      },
+      {
+        file: 'packages/server/tests/identity/ceremonies.workerd.test.ts',
+        test: 'sends a person who has that address already to the passkey they have',
+      },
+      {
+        file: 'packages/server/tests/http/invitations.workerd.test.ts',
+        test: 'mail an invitation that names an address, and show its link to nobody',
       },
     ],
   },

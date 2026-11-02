@@ -1,4 +1,4 @@
-export type ProvisionRole = 'author' | 'editor'
+export type ProvisionRole = 'reviewer' | 'author' | 'editor'
 
 export interface Access {
   readonly autoProvision: {

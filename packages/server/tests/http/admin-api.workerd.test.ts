@@ -160,8 +160,14 @@ describe("the admin's own routes", () => {
     const worker = boot()
     const owner = await adminToken(worker, 'owner')
 
-    const invited = await call(worker, owner, '/v1/admin/invitations', { role: 'author' })
-    const asOwner = await call(worker, owner, '/v1/admin/invitations', { role: 'owner' })
+    const invited = await call(worker, owner, '/v1/admin/invitations', {
+      role: 'author',
+      email: `ana-${crypto.randomUUID().slice(0, 8)}@example.org`,
+    })
+    const asOwner = await call(worker, owner, '/v1/admin/invitations', {
+      role: 'owner',
+      email: 'olga@example.org',
+    })
     const people = await (
       await call(worker, owner, '/v1/admin/people')
     ).json<{
@@ -209,7 +215,10 @@ describe("the admin's own routes", () => {
     const worker = boot()
     const owner = await adminToken(worker, 'owner')
     const made = await (
-      await call(worker, owner, '/v1/admin/invitations', { role: 'author' })
+      await call(worker, owner, '/v1/admin/invitations', {
+        role: 'author',
+        email: `ana-${crypto.randomUUID().slice(0, 8)}@example.org`,
+      })
     ).json<{ id: string; link: string }>()
     const elsewhere = await createInvitation(connect(env.DB), {
       site: OTHER_SITE_KEY,
@@ -217,6 +226,7 @@ describe("the admin's own routes", () => {
       userId: null,
       now: new Date(NOW),
       days: 7,
+      email: `new-${crypto.randomUUID().slice(0, 8)}@example.org`,
     })
     const used = await createInvitation(connect(env.DB), {
       site: SITE_KEY,
@@ -224,6 +234,7 @@ describe("the admin's own routes", () => {
       userId: null,
       now: new Date(NOW),
       days: 7,
+      email: `new-${crypto.randomUUID().slice(0, 8)}@example.org`,
     })
     await redeemInvitation(connect(env.DB), used.id, new Date(NOW))
     const options = (invitation: string) =>

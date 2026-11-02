@@ -189,7 +189,8 @@ describe('the admin', () => {
       clientId: expect.stringMatching(/^[\w-]{16}$/),
       redirectUri: `${PUBLIC_URL}/admin/callback`,
       resource: `${PUBLIC_URL}/v1`,
-      scope: 'content:read content:write content:publish schema:admin review:read review:comment',
+      scope:
+        'content:read content:write content:publish schema:admin site:owner review:read review:comment',
     })
     expect(second.clientId).toBe(first.clientId)
   })

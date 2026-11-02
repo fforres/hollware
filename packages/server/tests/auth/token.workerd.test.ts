@@ -233,6 +233,7 @@ describe('checkPersonalToken: the scopes of the role', () => {
           'content:write',
           'content:publish',
           'schema:admin',
+          'site:owner',
           'review:read',
           'review:comment',
         ],

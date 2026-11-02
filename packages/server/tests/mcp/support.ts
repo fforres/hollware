@@ -98,6 +98,7 @@ export const ALL_SCOPES: readonly Scope[] = [
   'content:write',
   'content:publish',
   'schema:admin',
+  'site:owner',
   'review:read',
   'review:comment',
 ]

@@ -90,7 +90,7 @@ async function seedPerson(name: string, worlds: readonly World[]) {
 }
 
 async function leaves(site: string, owner: string, userId: string) {
-  await removeMember(env.DB, { site, userId })
+  await removeMember(env.DB, { site, userId, owners: true })
   await env.DB.prepare(
     `INSERT INTO audit_log (id, site_id, action, outcome, actor_kind, actor_user_id, target_type, target_id, created_at, updated_at)
       VALUES (?1, ?2, 'member.remove', 'ok', 'user', ?3, 'user', ?4, ?5, ?5)`,

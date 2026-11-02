@@ -171,7 +171,13 @@ export function startStub(options: StubOptions): Promise<StubServer> {
   let connection: { outcome: string; [field: string]: unknown } | null = null
   const authorizations: (string | null)[] = []
   const granted = withImplied(
-    options.scopes ?? ['content:read', 'content:write', 'content:publish', 'schema:admin'],
+    options.scopes ?? [
+      'content:read',
+      'content:write',
+      'content:publish',
+      'schema:admin',
+      'site:owner',
+    ],
   )
   let nextId = 0
   const site = options.site ?? { key: 'blog', locales: ['en', 'es'], collections: ['blog'] }

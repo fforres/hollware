@@ -31,7 +31,11 @@ import RawView from './editor/RawView.vue'
 
 type Asset = Output<'list_assets'>['assets'][number]
 
-const props = defineProps<{ body: string; components: readonly ComponentDefinition[] }>()
+const props = defineProps<{
+  body: string
+  components: readonly ComponentDefinition[]
+  readonly?: boolean
+}>()
 const emit = defineEmits<{ 'update:body': [body: string]; lossy: [] }>()
 
 const m = useMessages()
@@ -277,6 +281,7 @@ const blockAt = ref(0)
       :extensions="extensions"
       :handlers="handlers"
       :placeholder="m.editor.placeholder"
+      :editable="props.readonly !== true"
       :editor-props="{ attributes: { 'aria-label': m.editor.body } }"
       class="min-h-[50vh]"
       :ui="{ base: 'ps-16 pe-2 sm:ps-16 sm:pe-2' }"

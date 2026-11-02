@@ -54,6 +54,7 @@ describe('AC-0.3-2: an author writes through an agent, and the owner approves in
   it('asks for a review, which the owner approves, and the site serves the post', async () => {
     const invited = await adminCall(server, owner.admin, '/v1/admin/invitations', {
       role: 'author',
+      email: 'ana@example.org',
     })
     const link = new URL(String(invited.body['link']))
     const invitation = new URLSearchParams(link.hash.slice(1)).get('invitation') ?? ''

@@ -23,7 +23,7 @@ export const BACKUP_USAGE = [
   '',
   'Options:',
   '  --url <url>          The address of your Hollware, such as https://cms.example.com',
-  '  --token-file <file>  A file with a personal token of an owner (schema:admin); without it, stdin',
+  '  --token-file <file>  A file with a personal token of an owner (site:owner); without it, stdin',
   '  --published          Write only what was published, as it was published; by default the latest',
   '                       revision of every entry out of the trash, drafts included',
   '  --help               Show this help',

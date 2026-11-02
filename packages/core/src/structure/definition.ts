@@ -238,7 +238,7 @@ export const siteDefinitionData = z.strictObject({
             .default([])
             .describe('The addresses that come in, such as "ada@example.com".'),
           role: z
-            .enum(['author', 'editor'])
+            .enum(['reviewer', 'author', 'editor'])
             .default('author')
             .describe('The role each of them gets in the site.'),
         })

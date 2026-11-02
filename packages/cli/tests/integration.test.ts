@@ -219,7 +219,7 @@ describe('hollware on a real local D1', () => {
         label: 'hollware init',
         hash: sha256(token),
         scopes:
-          '["content:read","content:write","content:publish","schema:admin","review:read","review:comment"]',
+          '["content:read","content:write","content:publish","schema:admin","site:owner","review:read","review:comment"]',
         expires_at: '2027-01-10T12:00:00.000Z',
         revoked_at: null,
         last_used_at: null,
@@ -233,7 +233,13 @@ describe('hollware on a real local D1', () => {
   })
 
   it('a second init is refused and the database is unchanged', SLOW, async () => {
-    const { code, out, err } = await cli(['init', '--site', 'blog'])
+    const { code, out, err } = await cli([
+      'init',
+      '--owner-email',
+      'olga@example.com',
+      '--site',
+      'blog',
+    ])
 
     expect(code).toBe(1)
     expect(out).toEqual([])
@@ -348,10 +354,13 @@ describe('hollware on a real local D1', () => {
       )
       let scratch = ''
 
-      const { code, out, err } = await cli(['init', '--site', 'blog', '--database', 'DB2'], {
-        randomBytes: countingBytes(),
-        tempDir: () => (scratch = mkdtempSync(join(tmpdir(), 'hollware-cli-it-sql-'))),
-      })
+      const { code, out, err } = await cli(
+        ['init', '--owner-email', 'olga@example.com', '--site', 'blog', '--database', 'DB2'],
+        {
+          randomBytes: countingBytes(),
+          tempDir: () => (scratch = mkdtempSync(join(tmpdir(), 'hollware-cli-it-sql-'))),
+        },
+      )
 
       expect(code).toBe(1)
       expect(out).toEqual([])
@@ -374,7 +383,13 @@ describe('hollware on a real local D1', () => {
     'init of a second site makes the owner its owner, with a token of that site',
     SLOW,
     async () => {
-      const { code, err } = await cli(['init', '--site', 'docs'])
+      const { code, err } = await cli([
+        'init',
+        '--owner-email',
+        'olga@example.com',
+        '--site',
+        'docs',
+      ])
 
       expect(err).toEqual([])
       expect(code).toBe(0)

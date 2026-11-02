@@ -80,6 +80,13 @@ export interface HollwareEnv {
    * is not called.
    */
   readonly AGENTS?: object
+  /**
+   * A `send_email` binding of Cloudflare Email Service: with it and `HOLLWARE_EMAIL_FROM`, an
+   * invitation that names an address is mailed to it, and its link is shown to nobody else.
+   */
+  readonly EMAIL?: SendEmail
+  /** The sender of the invitations, an address of a domain onboarded to Email Service. */
+  readonly HOLLWARE_EMAIL_FROM?: string
 }
 
 type Output<Spec extends { output: z.ZodType }> = z.output<Spec['output']>

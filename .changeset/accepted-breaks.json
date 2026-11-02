@@ -1,0 +1,10 @@
+{
+  "against": "@hollware/core@1.4.0",
+  "reason": "Only the maintainer runs Hollware, and he takes these breaks in 1.5.0: an owner makes a new token with site:owner.",
+  "breaks": [
+    "mcp create_site: now asks for site:owner",
+    "mcp delete_site: now asks for site:owner",
+    "mcp list_backups: now asks for site:owner",
+    "mcp restore_site: now asks for site:owner"
+  ]
+}

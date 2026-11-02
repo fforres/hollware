@@ -8,7 +8,7 @@ A headless CMS for the agent era, native to Cloudflare.
 ## Get started
 
 ```sh
-npm create hollware my-cms
+npm create hollware my-cms -- --owner-email you@example.com
 ```
 
 It makes a project, its local database, your site and a token, and prints the command that connects Claude Code to it. The [quickstart](https://hollware.com/docs/quickstart/) goes from there to a deployed Hollware.

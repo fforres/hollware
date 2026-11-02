@@ -111,7 +111,7 @@ export async function removeAgent(
         .bind(input.site, input.id, input.now),
     ),
   )
-  await removeMember(db, { site: input.site, userId: input.id })
+  await removeMember(db, { site: input.site, userId: input.id, owners: true })
   return json({ outcome: 'removed' })
 }
 

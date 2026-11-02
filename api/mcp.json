@@ -1245,7 +1245,7 @@
                           "role": {
                             "default": "author",
                             "description": "The role each of them gets in the site.",
-                            "enum": ["author", "editor"],
+                            "enum": ["reviewer", "author", "editor"],
                             "type": "string"
                           }
                         },
@@ -1347,6 +1347,7 @@
                           "content:write",
                           "content:publish",
                           "schema:admin",
+                          "site:owner",
                           "review:read",
                           "review:comment"
                         ],
@@ -1821,7 +1822,7 @@
         "required": ["outcome"],
         "type": "object"
       },
-      "scopes": ["schema:admin"],
+      "scopes": ["site:owner"],
       "title": "Create a site"
     },
     {
@@ -2045,7 +2046,7 @@
         "required": ["outcome"],
         "type": "object"
       },
-      "scopes": ["schema:admin"],
+      "scopes": ["site:owner"],
       "title": "Put a site in the trash"
     },
     {
@@ -3869,7 +3870,7 @@
                           "role": {
                             "default": "author",
                             "description": "The role each of them gets in the site.",
-                            "enum": ["author", "editor"],
+                            "enum": ["reviewer", "author", "editor"],
                             "type": "string"
                           }
                         },
@@ -3973,6 +3974,7 @@
                           "content:write",
                           "content:publish",
                           "schema:admin",
+                          "site:owner",
                           "review:read",
                           "review:comment"
                         ],
@@ -4816,7 +4818,7 @@
         "required": ["outcome"],
         "type": "object"
       },
-      "scopes": ["schema:admin"],
+      "scopes": ["site:owner"],
       "title": "List the backups of the site"
     },
     {
@@ -7372,7 +7374,7 @@
         "required": ["outcome"],
         "type": "object"
       },
-      "scopes": ["schema:admin"],
+      "scopes": ["site:owner"],
       "title": "Bring a site back from the trash"
     },
     {
@@ -8805,7 +8807,7 @@
                           "role": {
                             "default": "author",
                             "description": "The role each of them gets in the site.",
-                            "enum": ["author", "editor"],
+                            "enum": ["reviewer", "author", "editor"],
                             "type": "string"
                           }
                         },
@@ -8907,6 +8909,7 @@
                           "content:write",
                           "content:publish",
                           "schema:admin",
+                          "site:owner",
                           "review:read",
                           "review:comment"
                         ],

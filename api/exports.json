@@ -253,6 +253,7 @@
       "ProcessResult": "type",
       "ProcessedMarkdown": "type",
       "ProviderDefinition": "type",
+      "ProvisionRole": "type",
       "REFUSAL_CONTRACT_IDS": "value",
       "ReferenceParams": "type",
       "RenderHtml": "type",

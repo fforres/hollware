@@ -65,11 +65,20 @@ const GROUPS: readonly SettingsGroup[] = [
   },
 ]
 
-const OWNER_ONLY: ReadonlySet<SettingsKey> = new Set(['activity', 'agents', 'danger', 'signin'])
+const NEEDS: Readonly<Partial<Record<SettingsKey, string>>> = {
+  activity: 'schema:admin',
+  agents: 'schema:admin',
+  signin: 'schema:admin',
+  backups: 'site:owner',
+  danger: 'site:owner',
+}
 
-export function settingsGroups(owner: boolean): SettingsGroup[] {
+export function settingsGroups(scopes: readonly string[]): SettingsGroup[] {
   return GROUPS.map((group) => ({
     key: group.key,
-    sections: group.sections.filter((one) => owner || !OWNER_ONLY.has(one.key)),
+    sections: group.sections.filter((one) => {
+      const needed = NEEDS[one.key]
+      return needed === undefined || scopes.includes(needed)
+    }),
   }))
 }

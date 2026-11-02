@@ -211,7 +211,10 @@ describe("the admin's changes of identity", () => {
 
     await call(worker, owner.access, `/v1/admin/tokens/${made.id}/revoke`, {})
     const invited = await (
-      await call(worker, owner.access, '/v1/admin/invitations', { role: 'author' })
+      await call(worker, owner.access, '/v1/admin/invitations', {
+        role: 'author',
+        email: 'ana@example.org',
+      })
     ).json<{ id: string }>()
     await call(worker, owner.access, `/v1/admin/invitations/${invited.id}/revoke`, {})
     await call(worker, owner.access, '/v1/admin/people/role', {
@@ -274,6 +277,7 @@ describe("a person's own sign-in", () => {
       userId: null,
       now: new Date(at),
       days: 7,
+      email: `new-${crypto.randomUUID().slice(0, 8)}@example.org`,
     })
     const authenticator = await softAuthenticator(PUBLIC_URL)
     const post = async <T>(path: string, body: unknown) =>

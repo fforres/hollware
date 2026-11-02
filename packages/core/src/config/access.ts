@@ -1,5 +1,5 @@
 import type { Problems } from './config-error.ts'
-import type { ResolvedAccess } from './types.ts'
+import type { ProvisionRole, ResolvedAccess } from './types.ts'
 import { isRecord, itemPath, keyPath, quote, wrongType } from './values.ts'
 
 const DOMAIN =
@@ -90,13 +90,13 @@ export function readAccess(path: string, raw: unknown, problems: Problems): Reso
     problems,
   )
   const rawRole = provision['role']
-  let role: 'author' | 'editor' = 'author'
-  if (rawRole === 'author' || rawRole === 'editor') role = rawRole
+  let role: ProvisionRole = 'author'
+  if (rawRole === 'reviewer' || rawRole === 'author' || rawRole === 'editor') role = rawRole
   else if (rawRole !== undefined) {
     problems.add(
       keyPath(at, 'role'),
-      wrongType(rawRole, '"author" or "editor"'),
-      'An owner is only ever made by another owner: use "author" or "editor".',
+      wrongType(rawRole, '"reviewer", "author" or "editor"'),
+      'An owner or an admin is only ever made by a person: use "reviewer", "author" or "editor".',
     )
   }
   if (domains.length === 0 && emails.length === 0) {

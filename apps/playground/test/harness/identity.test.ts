@@ -55,8 +55,8 @@ beforeAll(async () => {
     }>(HOLLWARE_WORKER)
     .getEnv()
   await DB.prepare(
-    `INSERT INTO invitations (id, site_id, hash, role, user_id, expires_at, used_at, created_at, updated_at)
-      VALUES ('inv_01JAB3XQ8ZK4M6N2P5R7S9T0VW', ?1, ?2, 'author', NULL, '2099-01-01T00:00:00.000Z', NULL, ?3, ?3)`,
+    `INSERT INTO invitations (id, site_id, hash, role, user_id, email, expires_at, used_at, created_at, updated_at)
+      VALUES ('inv_01JAB3XQ8ZK4M6N2P5R7S9T0VW', ?1, ?2, 'author', NULL, 'ana@example.org', '2099-01-01T00:00:00.000Z', NULL, ?3, ?3)`,
   )
     .bind(SITE_KEY, await sha256(INVITATION), new Date().toISOString())
     .run()
