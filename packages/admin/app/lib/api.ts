@@ -1,4 +1,4 @@
-import type { OperationByName, OperationName } from '@hollware/core'
+import { MULTIPART_PART_BYTES, type OperationByName, type OperationName } from '@hollware/core'
 import type * as z from 'zod'
 import { en, type Messages } from '../i18n/en.ts'
 import type { Auth } from './auth.ts'
@@ -45,6 +45,10 @@ export const READS: ReadonlySet<OperationName> = new Set<OperationName>([
   'search',
   'validate',
 ])
+
+interface StartedUpload {
+  readonly upload: { readonly id: string; readonly partBytes: number; readonly parts: number }
+}
 
 interface Problem {
   readonly code?: string
@@ -113,12 +117,40 @@ export function createApi(deps: ApiDeps) {
       file: Blob,
       described: { readonly filename: string; readonly alt: string },
     ): Promise<Output<'upload_asset'>> {
-      const query = new URLSearchParams({ filename: described.filename, alt: described.alt })
-      return write(
-        send(`/v1/assets?${query.toString()}`, { method: 'PUT', body: file }) as Promise<
-          Output<'upload_asset'>
-        >,
-      )
+      if (file.size <= MULTIPART_PART_BYTES) {
+        const query = new URLSearchParams({ filename: described.filename, alt: described.alt })
+        return write(
+          send(`/v1/assets?${query.toString()}`, { method: 'PUT', body: file }) as Promise<
+            Output<'upload_asset'>
+          >,
+        )
+      }
+      const { upload } = (await send('/v1/uploads', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...described, bytes: file.size }),
+      })) as StartedUpload
+      const at = `/v1/uploads/${encodeURIComponent(upload.id)}`
+      try {
+        const parts: { part: number; etag: string }[] = []
+        for (let part = 1; part <= upload.parts; part++) {
+          const body = file.slice((part - 1) * upload.partBytes, part * upload.partBytes)
+          const sent = (await send(`${at}/parts/${part}`, { method: 'PUT', body })) as {
+            etag: string
+          }
+          parts.push({ part, etag: sent.etag })
+        }
+        return await write(
+          send(`${at}/complete`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ parts }),
+          }) as Promise<Output<'upload_asset'>>,
+        )
+      } catch (error) {
+        await send(at, { method: 'DELETE' }).catch(() => undefined)
+        throw error
+      }
     },
 
     async file(path: string): Promise<Blob> {

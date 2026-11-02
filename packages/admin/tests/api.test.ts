@@ -1,10 +1,10 @@
 import { expect, it } from 'vite-plus/test'
 
-import { OPERATIONS } from '@hollware/core'
+import { MULTIPART_PART_BYTES, OPERATIONS } from '@hollware/core'
 import { ApiError, createApi, READS } from '../app/lib/api.ts'
 import type { Auth } from '../app/lib/auth.ts'
 
-function world(answer: () => Response) {
+function world(answer: (url: string, method: string) => Response) {
   const sent: { url: string; method: string; authorization: string | null; body: string }[] = []
   const signIns: string[] = []
   let forgotten = false
@@ -34,7 +34,8 @@ function world(answer: () => Response) {
               ? `a file of ${init.body.size} bytes`
               : '',
       })
-      return answer()
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      return answer(url, init?.method ?? 'GET')
     },
     auth,
     here: () => '/admin/reviews',
@@ -129,6 +130,72 @@ it('streams a file to PUT /v1/assets, named in the query, and tells of the write
     },
   ])
   expect(w.writes()).toBe(1)
+})
+
+it('sends a file past one part in parts, each of the size the server gave, then completes it', async () => {
+  const w = world((url, method) => {
+    if (url === '/v1/uploads') {
+      return Response.json(
+        { outcome: 'started', upload: { id: 'upl_1', partBytes: MULTIPART_PART_BYTES, parts: 2 } },
+        { status: 201 },
+      )
+    }
+    if (method === 'PUT') return Response.json({ outcome: 'uploaded', etag: `etag-${url.at(-1)}` })
+    return Response.json({ outcome: 'created' }, { status: 201 })
+  })
+
+  const answer = await w.api.upload(new Blob([new Uint8Array(MULTIPART_PART_BYTES + 3)]), {
+    filename: 'launch.mp4',
+    alt: 'The launch',
+  })
+
+  expect(answer).toEqual({ outcome: 'created' })
+  expect(w.sent.map(({ url, method, body }) => [method, url, body])).toEqual([
+    [
+      'POST',
+      '/v1/uploads',
+      `{"filename":"launch.mp4","alt":"The launch","bytes":${MULTIPART_PART_BYTES + 3}}`,
+    ],
+    ['PUT', '/v1/uploads/upl_1/parts/1', `a file of ${MULTIPART_PART_BYTES} bytes`],
+    ['PUT', '/v1/uploads/upl_1/parts/2', 'a file of 3 bytes'],
+    [
+      'POST',
+      '/v1/uploads/upl_1/complete',
+      '{"parts":[{"part":1,"etag":"etag-1"},{"part":2,"etag":"etag-2"}]}',
+    ],
+  ])
+  expect(w.writes()).toBe(1)
+})
+
+it('aborts an upload in parts when a part fails, and answers why', async () => {
+  const w = world((url, method) => {
+    if (url === '/v1/uploads') {
+      return Response.json({
+        outcome: 'started',
+        upload: { id: 'upl_1', partBytes: MULTIPART_PART_BYTES, parts: 2 },
+      })
+    }
+    if (method === 'PUT') {
+      return Response.json(
+        { code: 'internal', message: 'The part failed.', fix: 'Try again.' },
+        { status: 500 },
+      )
+    }
+    return Response.json({ outcome: 'aborted' })
+  })
+
+  await expect(
+    w.api.upload(new Blob([new Uint8Array(MULTIPART_PART_BYTES + 3)]), {
+      filename: 'a.mp4',
+      alt: 'A',
+    }),
+  ).rejects.toEqual(new ApiError('internal', 'The part failed.', 'Try again.'))
+  expect(w.sent.map(({ url, method }) => [method, url])).toEqual([
+    ['POST', '/v1/uploads'],
+    ['PUT', '/v1/uploads/upl_1/parts/1'],
+    ['DELETE', '/v1/uploads/upl_1'],
+  ])
+  expect(w.writes()).toBe(0)
 })
 
 it('answers a refused upload with the problem the server gives', async () => {

@@ -668,7 +668,7 @@ export const es: Messages = {
       `Escribe hasta ${most} números enteros entre ${min} y ${max}, separados por comas, como 640, 1280.`,
     maxMegabytes: 'Video o PDF más grande, en megabytes',
     maxMegabytesHelp:
-      'Las imágenes siguen en 10 MB. Una subida lleva como mucho lo que permite el plan de Cloudflare de la zona: 100 MB en Free y Pro.',
+      'Las imágenes siguen en 10 MB. El admin envía por partes un archivo de más de 50 MB, así que ningún plan de Cloudflare lo limita.',
     maxMegabytesInvalid: (most: number) =>
       `Escribe un número entero de megabytes entre 1 y ${most}.`,
     saveImages: 'Guardar la configuración de imágenes',

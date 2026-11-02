@@ -658,7 +658,7 @@ export const en = {
       `Enter up to ${most} whole numbers from ${min} to ${max}, apart by commas, such as 640, 1280.`,
     maxMegabytes: 'Largest video or PDF, in megabytes',
     maxMegabytesHelp:
-      'Images stay at 10 MB. One upload carries at most what the Cloudflare plan of the zone allows: 100 MB on Free and Pro.',
+      'Images stay at 10 MB. The admin sends a file past 50 MB in parts, so no plan of Cloudflare limits it.',
     maxMegabytesInvalid: (most: number) => `Enter a whole number of megabytes from 1 to ${most}.`,
     saveImages: 'Save the image settings',
     keepOriginals: 'Keep the original of each image',
