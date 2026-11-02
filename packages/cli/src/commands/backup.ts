@@ -1,4 +1,4 @@
-import { EXTENSIONS, listBackups, sniffImage } from '@hollware/core'
+import { EXTENSIONS, listBackups, sniffAsset } from '@hollware/core'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { parseFlags } from '../args.ts'
@@ -206,7 +206,7 @@ export async function backup(argv: readonly string[], io: Io): Promise<number> {
       headers: { authorization: `Bearer ${token}` },
     })
     const bytes = response.ok ? new Uint8Array(await response.arrayBuffer()) : null
-    const format = bytes === null ? null : sniffImage(bytes)
+    const format = bytes === null ? null : sniffAsset(bytes)
     if (bytes === null || format === null) {
       await response.body?.cancel()
       missing.push(asset.id)

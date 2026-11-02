@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { d1Catalog, imagesConverter } from '../../src/media/cloudflare.ts'
 import { seedToken } from '../auth/support.ts'
-import { boot, restoreLogs, SITE_KEY } from './support.ts'
+import { boot, PUBLIC_URL, restoreLogs, SITE_KEY } from './support.ts'
 
 const LATER = '2026-11-11T12:00:00.000Z'
 const ID = 'ast_00112233445566778899aabbcc'
@@ -248,5 +248,104 @@ describe('imagesConverter', () => {
       [7, 7],
     ])
     expect(await converter.info(PNG)).toEqual({ format: 'image/png', width: 10, height: 5 })
+  })
+})
+
+const PDF = new TextEncoder().encode('%PDF-1.7\n% Hollware test\n%%EOF\n')
+
+function put(
+  worker: ReturnType<typeof boot>,
+  query: string,
+  body: BodyInit | null,
+  headers: Record<string, string>,
+  token?: string,
+) {
+  return worker.sendRequest(
+    new Request(new URL(`/v1/assets${query}`, PUBLIC_URL), { method: 'PUT', body, headers }),
+    token === undefined ? {} : { token },
+  )
+}
+
+describe('PUT /v1/assets', () => {
+  it('streams the body to R2 for a token that writes content, and serves it whole and by range', async () => {
+    const writer = await seedToken(env.DB, SITE_KEY, { expiresAt: LATER })
+    const worker = boot({ bindings: { MEDIA: env.MEDIA } })
+
+    const answer = await put(
+      worker,
+      '?filename=policy.pdf&alt=The%20gifts%20policy',
+      PDF,
+      { 'content-length': String(PDF.length) },
+      writer.token,
+    )
+    const body = await answer.json<{ outcome: string; asset: { id: string; url: string } }>()
+    const path = `/assets/${SITE_KEY}/${body.asset.id}`
+    const whole = await worker.send(path)
+    const part = await worker.send(path, { headers: { range: 'bytes=0-4' } })
+    const again = await put(
+      worker,
+      '?filename=again.pdf&alt=Again',
+      PDF,
+      { 'content-length': String(PDF.length) },
+      writer.token,
+    )
+
+    expect([answer.status, body.outcome, again.status]).toEqual([201, 'created', 200])
+    expect(new Uint8Array(await whole.arrayBuffer())).toEqual(PDF)
+    expect({
+      type: whole.headers.get('content-type'),
+      ranges: whole.headers.get('accept-ranges'),
+      disposition: whole.headers.get('content-disposition'),
+    }).toEqual({ type: 'application/pdf', ranges: 'bytes', disposition: 'inline' })
+    expect([part.status, part.headers.get('content-range')]).toEqual([206, 'bytes 0-4/31'])
+    expect(await part.text()).toBe('%PDF-')
+  })
+
+  it('refuses before it reads the body: no token, no scope, no filename, no length, past the limit', async () => {
+    const writer = await seedToken(env.DB, SITE_KEY, { expiresAt: LATER })
+    const reader = await seedToken(env.DB, SITE_KEY, { expiresAt: LATER, scopes: ['content:read'] })
+    const worker = boot({ bindings: { MEDIA: env.MEDIA } })
+    let read = false
+    const untouched = () =>
+      new ReadableStream<Uint8Array>(
+        {
+          pull() {
+            read = true
+          },
+        },
+        { highWaterMark: 0 },
+      )
+    const query = '?filename=a.mp4&alt=x'
+    const length = { 'content-length': '10' }
+
+    const statuses = [
+      (await put(worker, query, untouched(), length)).status,
+      (await put(worker, query, untouched(), length, reader.token)).status,
+      (await put(worker, '?alt=x', untouched(), length, writer.token)).status,
+      (await put(worker, query, untouched(), {}, writer.token)).status,
+      (await put(worker, query, untouched(), { 'content-length': '104857601' }, writer.token))
+        .status,
+    ]
+
+    expect([statuses, read]).toEqual([[401, 403, 400, 411, 413], false])
+  })
+
+  it('answers 400 for a body that ends short of its Content-Length, and keeps nothing', async () => {
+    const writer = await seedToken(env.DB, SITE_KEY, { expiresAt: LATER })
+    const worker = boot({ bindings: { MEDIA: env.MEDIA } })
+
+    const answer = await put(
+      worker,
+      '?filename=a.pdf&alt=x',
+      new Blob([PDF]).stream(),
+      { 'content-length': '100' },
+      writer.token,
+    )
+
+    expect(answer.status).toBe(400)
+    expect((await answer.json<{ problem: { message: string } }>()).problem.message).toBe(
+      'The upload ended before the whole file arrived: nothing was kept.',
+    )
+    expect((await env.MEDIA.list({ prefix: `uploads/${SITE_KEY}/` })).objects).toEqual([])
   })
 })

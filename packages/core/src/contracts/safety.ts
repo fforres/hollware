@@ -81,10 +81,10 @@ export const DISALLOWED_ATTRIBUTE = markerContract(
 
 export const UNSAFE_URL = markerContract(
   'unsafe-url',
-  'Links and images use an https:, http: or mailto: URL, a path of the site or an anchor.',
+  'Links and images use an https: or http: URL, an asset: reference, a path of the site or an anchor; links may also use mailto:.',
   (marker) => ({
     message: `The URL ${quote(marker.name)} is not allowed.`,
     params: { url: clip(marker.name) },
-    fix: 'Use an https: or http: URL, a mailto: address, a path of this site that starts with /, or an anchor that starts with #.',
+    fix: 'Use an https: or http: URL, an asset:ast_… reference that upload_asset gave, a mailto: address, a path of this site that starts with /, or an anchor that starts with #.',
   }),
 )

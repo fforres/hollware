@@ -1,3 +1,4 @@
+import { DEFAULT_MAX_FILE_BYTES, MAX_FILE_BYTES } from '../media/index.ts'
 import type { Problems } from './config-error.ts'
 import type { ResolvedMedia } from './types.ts'
 import { isRecord, keyPath, wrongType } from './values.ts'
@@ -18,10 +19,11 @@ export const DEFAULT_MEDIA: ResolvedMedia = {
   maxWidth: 2400,
   widths: [640, 1280],
   keepOriginals: true,
+  maxBytes: DEFAULT_MAX_FILE_BYTES,
 }
 
 const FIX =
-  'Declare it as { format: "webp", quality: 85, maxWidth: 2400, widths: [640, 1280], keepOriginals: true }, or remove it.'
+  'Declare it as { format: "webp", quality: 85, maxWidth: 2400, widths: [640, 1280], keepOriginals: true, maxBytes: 104857600 }, or remove it.'
 
 export function mediaWidths(value: unknown): number[] | null {
   if (!Array.isArray(value) || value.length > MEDIA_MAX_WIDTHS) return null
@@ -40,7 +42,7 @@ export function readMedia(path: string, raw: unknown, problems: Problems): Resol
     problems.add(path, wrongType(raw, 'an object'), FIX)
     return DEFAULT_MEDIA
   }
-  let { format, quality, maxWidth, widths, keepOriginals } = DEFAULT_MEDIA
+  let { format, quality, maxWidth, widths, keepOriginals, maxBytes } = DEFAULT_MEDIA
   const rawFormat = raw['format']
   if (rawFormat !== undefined) {
     if (MEDIA_FORMATS.some((candidate) => candidate === rawFormat)) {
@@ -97,7 +99,19 @@ export function readMedia(path: string, raw: unknown, problems: Problems): Resol
       'Use true to keep each file as it was uploaded, or false to keep only the one served.',
     )
   }
-  return { format, quality, maxWidth, widths, keepOriginals }
+  const rawMaxBytes = raw['maxBytes']
+  if (rawMaxBytes !== undefined) {
+    if (isWhole(rawMaxBytes) && rawMaxBytes >= 1 && rawMaxBytes <= MAX_FILE_BYTES) {
+      maxBytes = rawMaxBytes
+    } else {
+      problems.add(
+        keyPath(path, 'maxBytes'),
+        `${show(rawMaxBytes)} is not a whole number of bytes from 1 to ${MAX_FILE_BYTES}`,
+        'Give the largest video or PDF the site takes, in bytes, such as 524288000 for 500 MB.',
+      )
+    }
+  }
+  return { format, quality, maxWidth, widths, keepOriginals, maxBytes }
 }
 
 function isWhole(value: unknown): value is number {

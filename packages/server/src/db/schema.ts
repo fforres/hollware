@@ -822,11 +822,11 @@ export const assets = sqliteTable(
     foreignKey({ name: 'assets_creator', columns: [t.createdBy], foreignColumns: [users.id] }),
     check(
       'assets_formats',
-      sql`${t.format} IN ('image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/svg+xml') AND ${t.originalFormat} IN ('image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/svg+xml')`,
+      sql`${t.format} IN ('image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/svg+xml', 'video/mp4', 'video/webm', 'application/pdf') AND ${t.originalFormat} IN ('image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/svg+xml', 'video/mp4', 'video/webm', 'application/pdf')`,
     ),
     check(
       'assets_sizes',
-      sql`${t.bytes} > 0 AND ${t.originalBytes} BETWEEN 1 AND 10485760 AND length(${t.alt}) BETWEEN 1 AND 500 AND length(${t.filename}) BETWEEN 1 AND 200 AND length(${t.sha256}) = 64`,
+      sql`${t.bytes} > 0 AND ${t.originalBytes} > 0 AND length(${t.alt}) BETWEEN 1 AND 500 AND length(${t.filename}) BETWEEN 1 AND 200 AND length(${t.sha256}) = 64`,
     ),
   ],
 )

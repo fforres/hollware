@@ -42,7 +42,7 @@ const MARKDOWN_OR_COMPONENTS = `Remove the HTML and use Markdown or one of the a
 const ATTRIBUTE_FIX =
   'Links keep href and title, images keep src, alt, title, width and height, and a component takes only the props its schema declares.'
 const URL_FIX =
-  'Use an https: or http: URL, a mailto: address, a path of this site that starts with /, or an anchor that starts with #.'
+  'Use an https: or http: URL, an asset:ast_… reference that upload_asset gave, a mailto: address, a path of this site that starts with /, or an anchor that starts with #.'
 
 describe('the content-safety contracts', () => {
   it('say nothing about a body without markers', async () => {

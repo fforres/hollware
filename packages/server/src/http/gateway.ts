@@ -15,11 +15,12 @@ import {
   spentRefresh,
 } from '../oauth/refresh-reuse.ts'
 import type { RequestPrincipal } from '../auth/types.ts'
-import type { Clock } from '../ports.ts'
+import type { Clock, StoredFile } from '../ports.ts'
 import { installErrorHandling } from './errors.ts'
 import { installAdmin } from './admin.ts'
 import { installAdminApi } from './admin-api.ts'
 import { installOpsApi } from './ops-api.ts'
+import { installAssetUpload } from './asset-upload.ts'
 import { operationContext, type OperationContextDeps } from './operation-context.ts'
 import { installReadApi } from './read-api.ts'
 import type { Handlers } from '../ops/types.ts'
@@ -346,20 +347,21 @@ export function createGateway(options: GatewayOptions): Gateway {
   })
 
   if (options.handlers !== undefined) {
-    installOpsApi(app, {
+    const writes = {
       sites,
-      handlers: options.handlers,
       log,
-      protect: (c, proceed) => protectWrites(c, 'v1', proceed),
-      metadataUrl: (c) => oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1,
+      protect: (c: Context<GatewayEnv>, proceed: Proceed) => protectWrites(c, 'v1', proceed),
+      metadataUrl: (c: Context<GatewayEnv>) => oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1,
       context: contextOf,
-      audit: async (c, principal) =>
+      audit: async (c: Context<GatewayEnv>, principal: RequestPrincipal) =>
         auditOf(
           c,
           principal,
           (await adminClient(oauth(c.env.HOLLWARE_PUBLIC_URL), c.env)).clientId,
         ),
-    })
+    }
+    installOpsApi(app, { ...writes, handlers: options.handlers })
+    installAssetUpload(app, writes)
   }
 
   const serveAsset = async (
@@ -369,7 +371,17 @@ export function createGateway(options: GatewayOptions): Gateway {
     const { site = '', id = '' } = c.req.param()
     const media = mediaOfEnv(c.env)
     const key = media === null || !isSiteKey(site) || !ASSET_ID.test(id) ? null : keyOf(site, id)
-    const file = media === null || key === null ? null : await media.files.get(key)
+    const ranged = c.req.header('range') !== undefined
+    let file: StoredFile | null
+    try {
+      file =
+        media === null || key === null
+          ? null
+          : await media.files.get(key, ranged ? c.req.raw.headers : undefined)
+    } catch (error) {
+      if (!ranged) throw error
+      return new Response(null, { status: 416, headers: { 'cache-control': 'no-store' } })
+    }
     if (file === null) {
       return Response.json(
         {
@@ -384,6 +396,8 @@ export function createGateway(options: GatewayOptions): Gateway {
       'content-type': file.contentType,
       'cache-control': 'public, max-age=31536000, immutable',
       'cross-origin-resource-policy': 'cross-origin',
+      'accept-ranges': 'bytes',
+      'x-content-type-options': 'nosniff',
     })
     if (file.contentType === 'image/svg+xml') {
       headers.set(
@@ -391,7 +405,11 @@ export function createGateway(options: GatewayOptions): Gateway {
         "default-src 'none'; style-src 'unsafe-inline'; sandbox",
       )
     }
-    return new Response(file.body, { headers })
+    if (file.contentType === 'application/pdf') headers.set('content-disposition', 'inline')
+    if (file.range === null) return new Response(file.body, { headers })
+    const { offset, length } = file.range
+    headers.set('content-range', `bytes ${offset}-${offset + length - 1}/${file.size}`)
+    return new Response(file.body, { status: 206, headers })
   }
   app.get('/assets/:site/:id', (c) => serveAsset(c, servedKey))
   app.get('/assets/:site/:id/:width', (c) => {

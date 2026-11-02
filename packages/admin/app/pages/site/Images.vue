@@ -48,6 +48,7 @@ async function saveImages() {
       maxWidth: imageMaxWidth.value ?? definition.media.maxWidth,
       widths: widths.widths,
       keepOriginals: keepOriginals.value,
+      maxBytes: definition.media.maxBytes,
     },
   }))
 }

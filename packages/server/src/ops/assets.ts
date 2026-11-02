@@ -4,11 +4,14 @@ import {
   resolveAssetReferences,
   checkSvg,
   conversionOf,
+  isImageFormat,
   MAX_ASSET_BYTES,
-  sniffImage,
+  sniffAsset,
   srcsetOf,
   variantConversion,
   variantWidthsOf,
+  type AssetFormat,
+  type FileFormat,
   type ImageFormat,
 } from '@hollware/core'
 import type { AssetRow, Media } from '../ports.ts'
@@ -24,6 +27,7 @@ export const servedKey = (site: string, id: string) => `sites/${site}/${id}`
 export const originalKey = (site: string, id: string) => `originals/${site}/${id}`
 export const variantKey = (site: string, id: string, width: number) =>
   `${servedKey(site, id)}/${width}`
+export const uploadKey = (site: string, upload: string) => `uploads/${site}/${upload}`
 
 export function assetView(row: AssetRow, media: Media) {
   const url = `${media.baseUrl}${row.site}/${row.id}`
@@ -31,13 +35,13 @@ export function assetView(row: AssetRow, media: Media) {
     id: row.id,
     reference: `asset:${row.id}`,
     url,
-    format: row.format as ImageFormat,
+    format: row.format as AssetFormat,
     width: row.width,
     height: row.height,
     bytes: row.bytes,
     widths: [...row.widths],
     srcset: srcsetOf(url, row),
-    originalFormat: row.originalFormat as ImageFormat,
+    originalFormat: row.originalFormat as AssetFormat,
     originalBytes: row.originalBytes,
     alt: row.alt,
     filename: row.filename,
@@ -45,24 +49,61 @@ export function assetView(row: AssetRow, media: Media) {
   }
 }
 
-const refused = (message: string, fix: string) =>
-  ({ outcome: 'refused', problem: { message, fix } }) as const
+const STATUS_OF_PROBLEM = new WeakMap<object, 400 | 413 | 415>()
+
+const refused = (message: string, fix: string, status?: 400 | 413 | 415) => {
+  const problem = { message, fix }
+  if (status !== undefined) STATUS_OF_PROBLEM.set(problem, status)
+  return { outcome: 'refused', problem } as const
+}
 
 type Refusal = ReturnType<typeof refused>
+
+export function statusOfRefusal(output: { readonly problem?: object | undefined }): number {
+  return output.problem === undefined ? 422 : (STATUS_OF_PROBLEM.get(output.problem) ?? 422)
+}
 
 const MAX_REDIRECTS = 5
 
 const URL_FIX =
-  'Give a public https URL that answers the image itself, or send the file in base64 as data.'
+  'Give a public https URL that answers the file itself, or send the file in base64 as data.'
 
 function tooBig(bytes: number): Refusal {
   return refused(
     `The file is ${bytes} bytes, more than the ${MAX_ASSET_BYTES} an image may be.`,
     'Make it smaller (fewer pixels, or a format such as WebP) and upload it again.',
+    413,
   )
 }
 
-async function bytesOfUrl(media: Media, url: string): Promise<Uint8Array | Refusal> {
+function tooBigForSite(bytes: number, most: number): Refusal {
+  return refused(
+    `The file is ${bytes} bytes, more than the ${most} the site takes.`,
+    'Make it smaller, or raise maxBytes in the media setting of the site with update_site.',
+    413,
+  )
+}
+
+const NOT_TAKEN = refused(
+  'This file is not one Hollware takes: an image (JPEG, PNG, WebP, AVIF, GIF or SVG), a video (MP4 or WebM) or a PDF, judged by its bytes.',
+  'Export it as one of those formats and upload it again.',
+  415,
+)
+
+const CUT_SHORT = refused(
+  'The upload ended before the whole file arrived: nothing was kept.',
+  'Send it again.',
+  400,
+)
+
+export interface Streamed {
+  readonly body: ReadableStream<Uint8Array>
+  readonly length: number
+}
+
+const isRefusal = (value: Uint8Array | Refusal | Streamed): value is Refusal => 'outcome' in value
+
+async function bytesOfUrl(media: Media, url: string): Promise<Uint8Array | Refusal | Streamed> {
   let at = url
   for (let hops = 0; ; hops++) {
     if (!URL.canParse(at) || new URL(at).protocol !== 'https:') {
@@ -91,15 +132,17 @@ async function bytesOfUrl(media: Media, url: string): Promise<Uint8Array | Refus
   }
 }
 
-async function bytesOfResponse(url: string, response: Response): Promise<Uint8Array | Refusal> {
+async function bytesOfResponse(
+  url: string,
+  response: Response,
+): Promise<Uint8Array | Refusal | Streamed> {
   if (!response.ok || response.body === null) {
     await response.body?.cancel()
     return refused(`${url} answered ${response.status}.`, URL_FIX)
   }
   const declared = Number(response.headers.get('content-length'))
-  if (declared > MAX_ASSET_BYTES) {
-    await response.body.cancel()
-    return tooBig(declared)
+  if (Number.isSafeInteger(declared) && declared > MAX_ASSET_BYTES) {
+    return { body: response.body, length: declared }
   }
   const reader = response.body.getReader()
   const chunks: Uint8Array[] = []
@@ -110,7 +153,10 @@ async function bytesOfResponse(url: string, response: Response): Promise<Uint8Ar
     size += value.length
     if (size > MAX_ASSET_BYTES) {
       await reader.cancel()
-      return tooBig(size)
+      return refused(
+        `${url} answered more than ${MAX_ASSET_BYTES} bytes without a Content-Length.`,
+        'Give a URL that declares the Content-Length of the file, so Hollware streams it to R2, or send a smaller file.',
+      )
     }
     chunks.push(value)
   }
@@ -176,25 +222,144 @@ const NO_ALLOWANCE = {
   },
 } as const
 
+type UploadOutput = Awaited<ReturnType<OperationHandler<'upload_asset'>>>
+
+interface Described {
+  readonly filename: string
+  readonly alt: string
+}
+
 export const uploadAsset: OperationHandler<'upload_asset'> = async (input, context) => {
   const media = context.media ?? null
   if (media === null) return { outcome: 'unavailable', problem: NO_BUCKET }
   if ((input.data === undefined) === (input.url === undefined)) {
     return refused(
-      'Send the image once: as data, in base64, or as url, never both or neither.',
+      'Send the file once: as data, in base64, or as url, never both or neither.',
       'Give data with the file in base64, or url with a public https URL of it.',
     )
   }
   const original =
     input.url === undefined ? bytesOfBase64(input.data ?? '') : await bytesOfUrl(media, input.url)
-  if (!(original instanceof Uint8Array)) return original
-  const originalFormat = sniffImage(original)
-  if (originalFormat === null) {
-    return refused(
-      'This file is not an image Hollware takes: JPEG, PNG, WebP, AVIF, GIF or SVG, judged by its bytes.',
-      'Export it as one of those formats and upload it again.',
-    )
+  if (isRefusal(original)) return original
+  if (!(original instanceof Uint8Array)) return await uploadStream(input, original, context)
+  const format = sniffAsset(original)
+  if (format === null) return NOT_TAKEN
+  return isImageFormat(format)
+    ? await keepImage(media, context, input, original, format)
+    : await keepFile(media, context, input, original, format)
+}
+
+export async function uploadStream(
+  described: Described,
+  streamed: Streamed,
+  context: OperationContext,
+): Promise<UploadOutput> {
+  const media = context.media ?? null
+  if (media === null) {
+    await streamed.body.cancel()
+    return { outcome: 'unavailable', problem: NO_BUCKET }
   }
+  const most = context.site.media.maxBytes
+  if (streamed.length > Math.max(most, MAX_ASSET_BYTES)) {
+    await streamed.body.cancel()
+    return tooBigForSite(streamed.length, most)
+  }
+  const site = context.site.key
+  const upload = uploadKey(site, crypto.randomUUID())
+  try {
+    try {
+      await media.files.putStream(upload, streamed.body, streamed.length, OCTET_STREAM)
+    } catch (error) {
+      if (isCutShort(error)) return CUT_SHORT
+      throw error
+    }
+    const size = streamed.length
+    const head = await media.files.head(upload, SNIFFED_BYTES)
+    const format = head === null ? null : sniffAsset(head)
+    if (format === null) return NOT_TAKEN
+    if (isImageFormat(format)) {
+      if (size > MAX_ASSET_BYTES) return tooBig(size)
+      const file = await media.files.get(upload)
+      if (file === null) throw new Error(`No file at ${upload} after it was written`)
+      const bytes = new Uint8Array(await new Response(file.body).arrayBuffer())
+      return await keepImage(media, context, described, bytes, format)
+    }
+    if (size > most) return tooBigForSite(size, most)
+    const sha256 = await media.files.sha256(upload)
+    if (sha256 === null) throw new Error(`No file at ${upload} after it was written`)
+    const existing = await media.catalog.bySha256(site, sha256)
+    if (existing !== null) return { outcome: 'exists', asset: assetView(existing, media) }
+    const id = await assetIdOf(site, sha256)
+    await media.files.copy(upload, servedKey(site, id), format)
+    return await recordFile(media, context, described, { id, sha256, format, bytes: size })
+  } finally {
+    await media.files.delete(upload)
+  }
+}
+
+const OCTET_STREAM = 'application/octet-stream'
+const SNIFFED_BYTES = 512
+
+function isCutShort(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return /network connection lost|fixedlengthstream|expected|fewer bytes|more bytes/i.test(message)
+}
+
+async function keepFile(
+  media: Media,
+  context: OperationContext,
+  described: Described,
+  bytes: Uint8Array,
+  format: FileFormat,
+): Promise<UploadOutput> {
+  const most = context.site.media.maxBytes
+  if (bytes.length > most) return tooBigForSite(bytes.length, most)
+  const site = context.site.key
+  const sha256 = await sha256Of(bytes)
+  const existing = await media.catalog.bySha256(site, sha256)
+  if (existing !== null) return { outcome: 'exists', asset: assetView(existing, media) }
+  const id = await assetIdOf(site, sha256)
+  await media.files.put(servedKey(site, id), bytes, format)
+  return await recordFile(media, context, described, { id, sha256, format, bytes: bytes.length })
+}
+
+async function recordFile(
+  media: Media,
+  context: OperationContext,
+  described: Described,
+  file: {
+    readonly id: string
+    readonly sha256: string
+    readonly format: FileFormat
+    readonly bytes: number
+  },
+): Promise<UploadOutput> {
+  const { row, created } = await media.catalog.insert({
+    id: file.id,
+    site: context.site.key,
+    sha256: file.sha256,
+    format: file.format,
+    width: null,
+    height: null,
+    bytes: file.bytes,
+    widths: [],
+    originalFormat: file.format,
+    originalBytes: file.bytes,
+    alt: described.alt,
+    filename: described.filename,
+    createdBy: actorOf(context).userId,
+    createdAt: context.clock.now().toISOString(),
+  })
+  return { outcome: created ? 'created' : 'exists', asset: assetView(row, media) }
+}
+
+async function keepImage(
+  media: Media,
+  context: OperationContext,
+  described: Described,
+  original: Uint8Array,
+  originalFormat: ImageFormat,
+): Promise<UploadOutput> {
   const sha256 = await sha256Of(original)
   const site = context.site.key
   const existing = await media.catalog.bySha256(site, sha256)
@@ -252,8 +417,8 @@ export const uploadAsset: OperationHandler<'upload_asset'> = async (input, conte
     widths: variants.map((variant) => variant.width),
     originalFormat,
     originalBytes: original.length,
-    alt: input.alt,
-    filename: input.filename,
+    alt: described.alt,
+    filename: described.filename,
     createdBy: actorOf(context).userId,
     createdAt: context.clock.now().toISOString(),
   })

@@ -100,6 +100,7 @@ describe('resolveConfig', () => {
         maxWidth: 2400,
         widths: [640, 1280],
         keepOriginals: true,
+        maxBytes: 104857600,
       },
       collections: new Map([
         [
@@ -209,6 +210,7 @@ describe('resolveConfig', () => {
         maxWidth: 2400,
         widths: [640, 1280],
         keepOriginals: true,
+        maxBytes: 104857600,
       },
       collections: new Map([
         [

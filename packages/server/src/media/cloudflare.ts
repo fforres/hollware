@@ -10,18 +10,68 @@ import type {
 
 const streamOf = (bytes: Uint8Array): ReadableStream<Uint8Array> => new Blob([bytes]).stream()
 
+const hex = (digest: ArrayBuffer) =>
+  [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+
+function partOf(range: R2Range | undefined, size: number) {
+  if (range === undefined) return null
+  if ('suffix' in range && range.suffix !== undefined) {
+    const length = Math.min(range.suffix, size)
+    return { offset: size - length, length }
+  }
+  const offset = 'offset' in range && range.offset !== undefined ? range.offset : 0
+  const length = 'length' in range && range.length !== undefined ? range.length : size - offset
+  return { offset, length }
+}
+
 export function r2Files(bucket: R2Bucket): AssetFiles {
+  const putStream = async (
+    key: string,
+    body: ReadableStream<Uint8Array>,
+    length: number,
+    contentType: string,
+  ) => {
+    const fixed = new FixedLengthStream(length)
+    const [piped, put] = await Promise.allSettled([
+      body.pipeTo(fixed.writable),
+      bucket.put(key, fixed.readable, { httpMetadata: { contentType } }),
+    ])
+    if (put.status === 'rejected') throw put.reason
+    if (piped.status === 'rejected') throw piped.reason
+  }
   return {
     async put(key, bytes, contentType) {
       await bucket.put(key, bytes, { httpMetadata: { contentType } })
     },
-    async get(key) {
-      const object = await bucket.get(key)
+    async get(key, range) {
+      const object = range === undefined ? await bucket.get(key) : await bucket.get(key, { range })
       if (object === null) return null
       return {
         body: object.body,
         contentType: object.httpMetadata?.contentType ?? 'application/octet-stream',
+        size: object.size,
+        range: range === undefined ? null : partOf(object.range, object.size),
       }
+    },
+    putStream,
+    async head(key, length) {
+      const object = await bucket.get(key, { range: { offset: 0, length } })
+      return object === null ? null : new Uint8Array(await object.arrayBuffer())
+    },
+    async sha256(key) {
+      const object = await bucket.get(key)
+      if (object === null) return null
+      const digest = new crypto.DigestStream('SHA-256')
+      await object.body.pipeTo(digest)
+      return hex(await digest.digest)
+    },
+    async copy(from, to, contentType) {
+      const object = await bucket.get(from)
+      if (object === null) throw new Error(`No file at ${from} to copy`)
+      await putStream(to, object.body, object.size, contentType)
+    },
+    async delete(key) {
+      await bucket.delete(key)
     },
   }
 }

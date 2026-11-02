@@ -62,6 +62,14 @@ const REVIEWS = [
     VALUES ('rvc_1', 'demo', 'rvw_1', '${ID('usr')}', 'Looks good', '${T}', '${T}')`,
 ]
 
+const ASSET_COLUMNS =
+  'id, site_id, sha256, format, width, height, bytes, widths, original_format, original_bytes, alt, filename, created_by, created_at, updated_at'
+
+const asset = (id: string, format: string, bytes: number) =>
+  `INSERT INTO assets (${ASSET_COLUMNS}) VALUES ('${id}', 'demo', '${id.slice(4).padEnd(64, '0')}', '${format}', NULL, NULL, ${bytes}, '[]', '${format}', ${bytes}, 'A file', 'file', '${ID('usr')}', '${T}', '${T}')`
+
+const ASSETS = [asset('ast_00000000000000000000000001', 'image/png', 2048)]
+
 it('runs every migration after 0003 over the content of a deployment, and keeps all of it', () => {
   const db = new DatabaseSync(':memory:')
   db.exec('PRAGMA foreign_keys = ON')
@@ -87,10 +95,29 @@ it('runs every migration after 0003 over the content of a deployment, and keeps 
     if (file.startsWith('0008')) for (const statement of PUBLISHED) db.exec(statement)
     if (file.startsWith('0021')) for (const statement of REVIEWS) db.exec(statement)
     if (file.startsWith('0028')) for (const statement of CHALLENGES) db.exec(statement)
+    if (file.startsWith('0032')) for (const statement of ASSETS) db.exec(statement)
     db.exec('BEGIN')
     for (const statement of statementsOf(file)) db.exec(statement)
     db.exec('COMMIT')
   }
+
+  expect(db.prepare('SELECT id, format, original_bytes FROM assets').all()).toEqual([
+    { id: 'ast_00000000000000000000000001', format: 'image/png', original_bytes: 2048 },
+  ])
+  db.exec(asset('ast_00000000000000000000000002', 'video/mp4', 734003200))
+  db.exec(asset('ast_00000000000000000000000003', 'application/pdf', 921600))
+  expect(() => db.exec(asset('ast_00000000000000000000000004', 'text/html', 10))).toThrow(
+    /CHECK constraint failed: assets_formats/,
+  )
+  expect(() => db.exec(asset('ast_00000000000000000000000005', 'video/webm', 0))).toThrow(
+    /CHECK constraint failed: assets_sizes/,
+  )
+  expect(() => db.exec("DELETE FROM assets WHERE id = 'ast_00000000000000000000000002'")).toThrow(
+    /append-only: an asset is never deleted/,
+  )
+  expect(() =>
+    db.exec("UPDATE assets SET bytes = 1 WHERE id = 'ast_00000000000000000000000002'"),
+  ).toThrow(/append-only: only the alt of an asset changes/)
 
   const count = (table: string) => db.prepare(`SELECT count(*) AS n FROM ${table}`).get()?.['n']
   expect(['sites', 'users', 'tokens', 'entries', 'revisions', 'publications'].map(count)).toEqual([

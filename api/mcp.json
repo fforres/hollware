@@ -1694,6 +1694,7 @@
                 "default": {
                   "format": "webp",
                   "keepOriginals": true,
+                  "maxBytes": 104857600,
                   "maxWidth": 2400,
                   "quality": 85,
                   "widths": [640, 1280]
@@ -1710,6 +1711,13 @@
                     "default": true,
                     "description": "Whether the file as it was uploaded is kept in R2 besides the one served, for a later change of format. false keeps only the file served and its copies, which takes less storage; the images uploaded before keep theirs.",
                     "type": "boolean"
+                  },
+                  "maxBytes": {
+                    "default": 104857600,
+                    "description": "The largest video (MP4, WebM) or PDF the site takes, in bytes: 104857600 (100 MB) by default, up to 5000000000. One upload request carries at most what the Cloudflare plan of the zone allows: 100 MB on Free and Pro, 200 MB on Business, 500 MB on Enterprise. Images stay at 10 MB, what Cloudflare Images converts.",
+                    "maximum": 5000000000,
+                    "minimum": 1,
+                    "type": "integer"
                   },
                   "maxWidth": {
                     "default": 2400,
@@ -2405,7 +2413,10 @@
                   "image/webp",
                   "image/avif",
                   "image/gif",
-                  "image/svg+xml"
+                  "image/svg+xml",
+                  "video/mp4",
+                  "video/webm",
+                  "application/pdf"
                 ],
                 "type": "string"
               },
@@ -2439,12 +2450,15 @@
                   "image/webp",
                   "image/avif",
                   "image/gif",
-                  "image/svg+xml"
+                  "image/svg+xml",
+                  "video/mp4",
+                  "video/webm",
+                  "application/pdf"
                 ],
                 "type": "string"
               },
               "reference": {
-                "description": "What content writes to show it: img: asset:ast_… or ![alt](asset:ast_…).",
+                "description": "What content writes to name it: img: asset:ast_… in the frontmatter, ![alt](asset:ast_…) in Markdown for an image, [text](asset:ast_…) for a link to a video or a PDF.",
                 "type": "string"
               },
               "srcset": {
@@ -2466,7 +2480,7 @@
                     "type": "null"
                   }
                 ],
-                "description": "In pixels; null for an SVG."
+                "description": "In pixels; null for an SVG, a video or a PDF."
               },
               "widths": {
                 "description": "The widths of its narrower copies, smallest first, each served at <url>/<width>: the media widths of the site narrower than the image, made when it was uploaded. Absent from a Hollware before 1.0.0-rc.3.",
@@ -4335,6 +4349,7 @@
                 "default": {
                   "format": "webp",
                   "keepOriginals": true,
+                  "maxBytes": 104857600,
                   "maxWidth": 2400,
                   "quality": 85,
                   "widths": [640, 1280]
@@ -4351,6 +4366,13 @@
                     "default": true,
                     "description": "Whether the file as it was uploaded is kept in R2 besides the one served, for a later change of format. false keeps only the file served and its copies, which takes less storage; the images uploaded before keep theirs.",
                     "type": "boolean"
+                  },
+                  "maxBytes": {
+                    "default": 104857600,
+                    "description": "The largest video (MP4, WebM) or PDF the site takes, in bytes: 104857600 (100 MB) by default, up to 5000000000. One upload request carries at most what the Cloudflare plan of the zone allows: 100 MB on Free and Pro, 200 MB on Business, 500 MB on Enterprise. Images stay at 10 MB, what Cloudflare Images converts.",
+                    "maximum": 5000000000,
+                    "minimum": 1,
+                    "type": "integer"
                   },
                   "maxWidth": {
                     "default": 2400,
@@ -4378,7 +4400,14 @@
                     "type": "array"
                   }
                 },
-                "required": ["format", "quality", "maxWidth", "widths", "keepOriginals"],
+                "required": [
+                  "format",
+                  "quality",
+                  "maxWidth",
+                  "widths",
+                  "keepOriginals",
+                  "maxBytes"
+                ],
                 "type": "object"
               },
               "review": {
@@ -4670,7 +4699,10 @@
                     "image/webp",
                     "image/avif",
                     "image/gif",
-                    "image/svg+xml"
+                    "image/svg+xml",
+                    "video/mp4",
+                    "video/webm",
+                    "application/pdf"
                   ],
                   "type": "string"
                 },
@@ -4704,12 +4736,15 @@
                     "image/webp",
                     "image/avif",
                     "image/gif",
-                    "image/svg+xml"
+                    "image/svg+xml",
+                    "video/mp4",
+                    "video/webm",
+                    "application/pdf"
                   ],
                   "type": "string"
                 },
                 "reference": {
-                  "description": "What content writes to show it: img: asset:ast_… or ![alt](asset:ast_…).",
+                  "description": "What content writes to name it: img: asset:ast_… in the frontmatter, ![alt](asset:ast_…) in Markdown for an image, [text](asset:ast_…) for a link to a video or a PDF.",
                   "type": "string"
                 },
                 "srcset": {
@@ -4731,7 +4766,7 @@
                       "type": "null"
                     }
                   ],
-                  "description": "In pixels; null for an SVG."
+                  "description": "In pixels; null for an SVG, a video or a PDF."
                 },
                 "widths": {
                   "description": "The widths of its narrower copies, smallest first, each served at <url>/<width>: the media widths of the site narrower than the image, made when it was uploaded. Absent from a Hollware before 1.0.0-rc.3.",
@@ -4774,7 +4809,7 @@
         "type": "object"
       },
       "scopes": ["content:read"],
-      "title": "List the images of the site"
+      "title": "List the images, videos and PDFs of the site"
     },
     {
       "effect": "read",
@@ -8352,7 +8387,10 @@
                   "image/webp",
                   "image/avif",
                   "image/gif",
-                  "image/svg+xml"
+                  "image/svg+xml",
+                  "video/mp4",
+                  "video/webm",
+                  "application/pdf"
                 ],
                 "type": "string"
               },
@@ -8386,12 +8424,15 @@
                   "image/webp",
                   "image/avif",
                   "image/gif",
-                  "image/svg+xml"
+                  "image/svg+xml",
+                  "video/mp4",
+                  "video/webm",
+                  "application/pdf"
                 ],
                 "type": "string"
               },
               "reference": {
-                "description": "What content writes to show it: img: asset:ast_… or ![alt](asset:ast_…).",
+                "description": "What content writes to name it: img: asset:ast_… in the frontmatter, ![alt](asset:ast_…) in Markdown for an image, [text](asset:ast_…) for a link to a video or a PDF.",
                 "type": "string"
               },
               "srcset": {
@@ -8413,7 +8454,7 @@
                     "type": "null"
                   }
                 ],
-                "description": "In pixels; null for an SVG."
+                "description": "In pixels; null for an SVG, a video or a PDF."
               },
               "widths": {
                 "description": "The widths of its narrower copies, smallest first, each served at <url>/<width>: the media widths of the site narrower than the image, made when it was uploaded. Absent from a Hollware before 1.0.0-rc.3.",
@@ -9254,6 +9295,7 @@
                 "default": {
                   "format": "webp",
                   "keepOriginals": true,
+                  "maxBytes": 104857600,
                   "maxWidth": 2400,
                   "quality": 85,
                   "widths": [640, 1280]
@@ -9270,6 +9312,13 @@
                     "default": true,
                     "description": "Whether the file as it was uploaded is kept in R2 besides the one served, for a later change of format. false keeps only the file served and its copies, which takes less storage; the images uploaded before keep theirs.",
                     "type": "boolean"
+                  },
+                  "maxBytes": {
+                    "default": 104857600,
+                    "description": "The largest video (MP4, WebM) or PDF the site takes, in bytes: 104857600 (100 MB) by default, up to 5000000000. One upload request carries at most what the Cloudflare plan of the zone allows: 100 MB on Free and Pro, 200 MB on Business, 500 MB on Enterprise. Images stay at 10 MB, what Cloudflare Images converts.",
+                    "maximum": 5000000000,
+                    "minimum": 1,
+                    "type": "integer"
                   },
                   "maxWidth": {
                     "default": 2400,
@@ -9482,13 +9531,13 @@
         "additionalProperties": false,
         "properties": {
           "alt": {
-            "description": "What the image shows, for whoever cannot see it: required.",
+            "description": "What the image shows, for whoever cannot see it, or what the video or the PDF holds: required.",
             "maxLength": 500,
             "minLength": 1,
             "type": "string"
           },
           "data": {
-            "description": "The file, in base64. Send data or url, not both.",
+            "description": "The file, in base64, at most 10 MB. Send data or url, not both.",
             "maxLength": 13981016,
             "minLength": 1,
             "type": "string"
@@ -9542,7 +9591,10 @@
                   "image/webp",
                   "image/avif",
                   "image/gif",
-                  "image/svg+xml"
+                  "image/svg+xml",
+                  "video/mp4",
+                  "video/webm",
+                  "application/pdf"
                 ],
                 "type": "string"
               },
@@ -9576,12 +9628,15 @@
                   "image/webp",
                   "image/avif",
                   "image/gif",
-                  "image/svg+xml"
+                  "image/svg+xml",
+                  "video/mp4",
+                  "video/webm",
+                  "application/pdf"
                 ],
                 "type": "string"
               },
               "reference": {
-                "description": "What content writes to show it: img: asset:ast_… or ![alt](asset:ast_…).",
+                "description": "What content writes to name it: img: asset:ast_… in the frontmatter, ![alt](asset:ast_…) in Markdown for an image, [text](asset:ast_…) for a link to a video or a PDF.",
                 "type": "string"
               },
               "srcset": {
@@ -9603,7 +9658,7 @@
                     "type": "null"
                   }
                 ],
-                "description": "In pixels; null for an SVG."
+                "description": "In pixels; null for an SVG, a video or a PDF."
               },
               "widths": {
                 "description": "The widths of its narrower copies, smallest first, each served at <url>/<width>: the media widths of the site narrower than the image, made when it was uploaded. Absent from a Hollware before 1.0.0-rc.3.",
@@ -9654,7 +9709,7 @@
         "type": "object"
       },
       "scopes": ["content:write"],
-      "title": "Upload an image"
+      "title": "Upload an image, a video or a PDF"
     },
     {
       "effect": "read",

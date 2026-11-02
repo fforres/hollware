@@ -6,8 +6,8 @@ import {
   listEntries,
   listRedirects,
   schemas,
-  sniffImage,
-  type ImageFormat,
+  sniffAsset,
+  type AssetFormat,
 } from '@hollware/core'
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -430,7 +430,7 @@ async function readImages(
     } else {
       const original = new URL(`/v1/assets/${id}/original`, plan.endpoint)
       const bytes = await download(original, plan.token, id)
-      const format: ImageFormat = sniffImage(bytes) ?? asset.originalFormat
+      const format: AssetFormat = sniffAsset(bytes) ?? asset.originalFormat
       const name = `${id}.${EXTENSIONS[format]}`
       images.push({ path: name, bytes })
       manifest[name] = { alt: asset.alt, filename: asset.filename }
