@@ -650,7 +650,7 @@ export const es: Messages = {
       `Escribe un número entero de días entre ${min} y ${max}, o conserva el registro siempre.`,
     saveActivity: 'Guardar la configuración del registro',
     imagesNote:
-      'Cómo se guardan las imágenes que se suban desde ahora. Las que ya están no cambian.',
+      'Cómo se guardan las imágenes, videos y PDF que se suban desde ahora. Los que ya están no cambian.',
     imageFormat: 'Formato',
     formatWebp: 'WebP',
     formatAvif: 'AVIF',
@@ -666,6 +666,11 @@ export const es: Messages = {
       'Cada imagen recibe también una copia de cada uno de estos anchos menores que el suyo, para que un teléfono cargue una pequeña: srcset. Cada copia es una conversión más de Cloudflare Images, que cuenta para su cuota mensual. Vacío no hace ninguna.',
     imageWidthsInvalid: (min: number, max: number, most: number) =>
       `Escribe hasta ${most} números enteros entre ${min} y ${max}, separados por comas, como 640, 1280.`,
+    maxMegabytes: 'Video o PDF más grande, en megabytes',
+    maxMegabytesHelp:
+      'Las imágenes siguen en 10 MB. Una subida lleva como mucho lo que permite el plan de Cloudflare de la zona: 100 MB en Free y Pro.',
+    maxMegabytesInvalid: (most: number) =>
+      `Escribe un número entero de megabytes entre 1 y ${most}.`,
     saveImages: 'Guardar la configuración de imágenes',
     keepOriginals: 'Guardar el original de cada imagen',
     keepOriginalsHelp:
@@ -978,15 +983,16 @@ export const es: Messages = {
     title: 'Imágenes',
     copies: (widths: string) => `copias de ${widths} px`,
     intro:
-      'Las imágenes del sitio, de la más nueva a la más antigua. Cada una se convierte una vez al llegar (a WebP por defecto); copia su referencia en una entrada para mostrarla.',
-    file: 'Imagen',
+      'Las imágenes, videos y PDF del sitio, del más nuevo al más antiguo. Una imagen se convierte una vez al llegar (a WebP por defecto), un video o un PDF se guarda tal como llegó; copia su referencia en una entrada para mostrarlo o enlazarlo.',
+    file: 'Archivo',
     alt: 'Qué muestra',
     altHelp: 'Para quien no puede verla: obligatorio.',
     upload: 'Subir',
-    uploaded: 'Imagen subida',
-    exists: 'El sitio ya tiene esta imagen',
-    refused: 'La imagen no se guardó',
-    none: 'Todavía no hay imágenes.',
+    uploaded: 'Archivo subido',
+    exists: 'El sitio ya tiene este archivo',
+    refused: 'El archivo no se guardó',
+    none: 'Todavía no hay archivos.',
+    openPdf: 'Abrir el PDF',
     copy: 'Copiar para Markdown',
     editAlt: 'Editar lo que muestra',
     editAltOf: (name: string) => `Editar lo que muestra: ${name}`,
@@ -1023,7 +1029,7 @@ export const es: Messages = {
       make_webhook_secret: 'Creó un secreto de webhook',
       connect_analytics: 'Conectó analíticas',
       disconnect_analytics: 'Desconectó analíticas',
-      upload_asset: 'Subió una imagen',
+      upload_asset: 'Subió un archivo',
       update_asset: 'Cambió el texto alternativo de una imagen',
       'token.create': 'Creó un token',
       'preview.create': 'Creó un enlace de vista previa',

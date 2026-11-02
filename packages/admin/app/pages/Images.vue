@@ -6,7 +6,7 @@ import { computed, ref, useTemplateRef } from 'vue'
 import Page from '../components/Page.vue'
 import { formatDate, useMessages } from '../i18n/index.ts'
 import { ApiError, type Output } from '../lib/api.ts'
-import { base64OfFile, sizeOf } from '../lib/images.ts'
+import { ACCEPTED_FILES, kindOf, markdownOf, sizeOf } from '../lib/images.ts'
 import { api } from '../lib/session.ts'
 
 type Asset = NonNullable<Output<'get_asset'>['asset']>
@@ -49,10 +49,9 @@ async function upload() {
   if (file.value === null || alt.value.trim() === '') return
   busy.value = true
   try {
-    const answer = await api.call('upload_asset', {
+    const answer = await api.upload(file.value, {
       filename: file.value.name,
       alt: alt.value.trim(),
-      data: await base64OfFile(file.value),
     })
     if (answer.asset === undefined) {
       toast.add({
@@ -77,7 +76,7 @@ async function upload() {
 }
 
 async function copy(asset: Asset) {
-  await clipboard.copy(`![${asset.alt}](${asset.reference})`)
+  await clipboard.copy(markdownOf(asset))
   toast.add({ title: m.value.images.copied, color: 'success' })
 }
 
@@ -112,7 +111,7 @@ async function saveAlt() {
           ref="input"
           type="file"
           :aria-label="m.images.file"
-          accept="image/jpeg,image/png,image/webp,image/avif,image/gif,image/svg+xml"
+          :accept="ACCEPTED_FILES"
           class="text-sm"
           @change="choose"
         />
@@ -135,7 +134,26 @@ async function saveAlt() {
         :key="asset.id"
         class="border-default flex flex-col gap-2 rounded-md border p-2"
       >
+        <video
+          v-if="kindOf(asset.format) === 'video'"
+          :src="asset.url"
+          :aria-label="asset.alt"
+          controls
+          preload="metadata"
+          class="bg-elevated aspect-video w-full rounded object-contain"
+        />
+        <a
+          v-else-if="kindOf(asset.format) === 'pdf'"
+          :href="asset.url"
+          target="_blank"
+          rel="noopener"
+          class="bg-elevated text-muted flex aspect-video w-full flex-col items-center justify-center gap-1 rounded text-sm"
+        >
+          <UIcon name="i-lucide-file-text" class="size-8" />
+          {{ m.images.openPdf }}
+        </a>
         <img
+          v-else
           :src="asset.url"
           :srcset="asset.srcset ?? undefined"
           sizes="320px"

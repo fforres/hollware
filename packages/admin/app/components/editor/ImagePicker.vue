@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useMessages } from '../../i18n/index.ts'
 import { ApiError, type Output } from '../../lib/api.ts'
-import { base64OfFile } from '../../lib/images.ts'
+import { base64OfFile, kindOf } from '../../lib/images.ts'
 import { api } from '../../lib/session.ts'
 
 type Asset = Output<'list_assets'>['assets'][number]
@@ -28,6 +28,10 @@ watch(open, async (isOpen) => {
   refused.value = null
   if (assets.value === null) assets.value = (await api.call('list_assets', { limit: 100 })).assets
 })
+
+const images = computed(() =>
+  assets.value === null ? null : assets.value.filter((one) => kindOf(one.format) === 'image'),
+)
 
 const tabs = computed(() => [
   { label: m.value.editor.image.library, value: 'library', slot: 'library' as const },
@@ -77,11 +81,11 @@ function pick(src: string, text: string, address = src) {
     <template #body>
       <UTabs v-model="tab" :items="tabs" variant="link">
         <template #library>
-          <p v-if="assets !== null && assets.length === 0" class="pt-4 text-sm text-muted">
+          <p v-if="images !== null && images.length === 0" class="pt-4 text-sm text-muted">
             {{ m.editor.image.empty }}
           </p>
           <ul v-else class="grid grid-cols-3 gap-3 pt-4">
-            <li v-for="asset in assets ?? []" :key="asset.id">
+            <li v-for="asset in images ?? []" :key="asset.id">
               <button
                 type="button"
                 class="block w-full overflow-hidden rounded-md border border-default text-left hover:ring-2 hover:ring-secondary/60 focus-visible:ring-2 focus-visible:ring-secondary focus-visible:outline-none"
