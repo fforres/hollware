@@ -59,7 +59,9 @@
       "vars": {
         "HOLLWARE_PUBLIC_URL": "https://cms.demo.hollware.com",
         "HOLLWARE_EMBEDDING_MODEL": "@cf/baai/bge-m3",
+        "HOLLWARE_EMAIL_FROM": "Hollware <no-reply@hollware.com>",
       },
+      "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["no-reply@hollware.com"] }],
       "ai": { "binding": "AI" },
       "vectorize": [{ "binding": "VECTORIZE", "index_name": "hollware-demo-bge-m3" }],
       "routes": [{ "pattern": "cms.demo.hollware.com", "custom_domain": true }],

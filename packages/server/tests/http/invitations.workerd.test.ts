@@ -158,7 +158,7 @@ describe('invitations', () => {
     })
     expect(box.sent).toHaveLength(1)
     expect(box.sent[0]).toMatchObject({
-      from: FROM,
+      from: { name: 'Hollware', email: 'invitations@hollware.test' },
       to,
       subject: 'Test user te invitó a gateway-tests en Hollware',
     })

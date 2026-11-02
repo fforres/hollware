@@ -17,19 +17,40 @@ function git(...args: string[]): string {
   return result.stdout
 }
 
+function blobsOf(ids: readonly string[]): Map<string, string> {
+  const result = spawnSync('git', ['cat-file', '--batch'], {
+    cwd: REPO_ROOT,
+    input: `${ids.join('\n')}\n`,
+    maxBuffer: 256 * 1024 * 1024,
+  })
+  if (result.status !== 0) throw new Error(`git cat-file --batch failed: ${String(result.stderr)}`)
+  const out = result.stdout
+  const blobs = new Map<string, string>()
+  let at = 0
+  for (const id of ids) {
+    const end = out.indexOf(0x0a, at)
+    const size = Number(out.subarray(at, end).toString('utf8').split(' ')[2])
+    blobs.set(id, out.subarray(end + 1, end + 1 + size).toString('utf8'))
+    at = end + 1 + size + 1
+  }
+  return blobs
+}
+
 function shippedReleases() {
   const tags = git('tag', '--list', '@hollware/server@*').split('\n').filter(Boolean).sort()
-  return tags.map((tag) => {
-    const names = git('ls-tree', '--name-only', `${tag}:${MIGRATIONS}`)
+  const listed = tags.map((tag) => ({
+    tag,
+    entries: git('ls-tree', `${tag}:${MIGRATIONS}`)
       .split('\n')
-      .filter((name) => name.endsWith('.sql'))
-    return {
-      tag,
-      files: Object.fromEntries(
-        names.map((name) => [name, git('show', `${tag}:${MIGRATIONS}/${name}`)]),
-      ),
-    }
-  })
+      .map((line) => /^\d+ blob ([0-9a-f]+)\t(.+\.sql)$/.exec(line))
+      .filter((match) => match !== null)
+      .map(([, id = '', name = '']) => ({ id, name })),
+  }))
+  const blobs = blobsOf([...new Set(listed.flatMap((release) => release.entries.map((e) => e.id)))])
+  return listed.map(({ tag, entries }) => ({
+    tag,
+    files: Object.fromEntries(entries.map(({ id, name }) => [name, blobs.get(id) ?? ''])),
+  }))
 }
 
 describe('shipped migrations', { timeout: 60_000 }, () => {

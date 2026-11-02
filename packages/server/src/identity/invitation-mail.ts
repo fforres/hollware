@@ -15,7 +15,7 @@ export interface InvitationMail {
 
 export interface Mailer {
   readonly send: (message: {
-    readonly from: string
+    readonly from: string | { readonly name: string; readonly email: string }
     readonly to: string
     readonly subject: string
     readonly text: string
@@ -64,12 +64,19 @@ function dateOf(iso: string, language: MailLanguage): string {
   )
 }
 
+export function senderOf(from: string): string | { name: string; email: string } {
+  const named = /^\s*"?([^"<]*?)"?\s*<([^<>\s]+@[^<>\s]+)>\s*$/.exec(from)
+  if (named === null) return from.trim()
+  const [, name = '', email = ''] = named
+  return name.trim() === '' ? email : { name: name.trim(), email }
+}
+
 export function invitationMessage(mail: InvitationMail, from: string) {
   const words = WORDS[mail.language]
   const intro = words.body(mail.inviter, mail.site, words.roles[mail.role])
   const once = words.once(dateOf(mail.expiresAt, mail.language))
   return {
-    from,
+    from: senderOf(from),
     to: mail.to,
     subject: words.subject(mail.inviter, mail.site),
     text: `${intro}\n\n${words.open}: ${mail.link}\n\n${once}\n${words.ignore}\n`,
