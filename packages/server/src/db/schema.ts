@@ -74,7 +74,7 @@ export const members = sqliteTable(
     unique('members_person').on(t.siteId, t.userId),
     foreignKey({ name: 'members_site', columns: [t.siteId], foreignColumns: [sites.id] }),
     foreignKey({ name: 'members_user', columns: [t.userId], foreignColumns: [users.id] }),
-    check('members_role', sql`${t.role} IN ('owner', 'editor', 'author')`),
+    check('members_role', sql`${t.role} IN ('owner', 'admin', 'editor', 'author', 'reviewer')`),
   ],
 )
 
@@ -480,13 +480,15 @@ export const invitations = sqliteTable(
     usedAt: text('used_at'),
     ...timestamps(),
     email: text('email'),
+    revokedAt: text('revoked_at'),
+    sentAt: text('sent_at'),
   },
   (t) => [
     unique('invitations_id_site').on(t.id, t.siteId),
     unique('invitations_hash').on(t.hash),
     foreignKey({ name: 'invitations_site', columns: [t.siteId], foreignColumns: [sites.id] }),
     foreignKey({ name: 'invitations_user', columns: [t.userId], foreignColumns: [users.id] }),
-    check('invitations_role', sql`${t.role} IN ('owner', 'editor', 'author')`),
+    check('invitations_role', sql`${t.role} IN ('owner', 'admin', 'editor', 'author', 'reviewer')`),
   ],
 )
 
@@ -508,7 +510,7 @@ export const authChallenges = sqliteTable(
   (t) => [
     check(
       'auth_challenges_purpose',
-      sql`${t.purpose} IN ('register', 'authenticate', 'federate', 'enroll')`,
+      sql`${t.purpose} IN ('register', 'authenticate', 'federate', 'enroll', 'accept')`,
     ),
   ],
 )

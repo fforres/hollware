@@ -57,7 +57,16 @@ async function main(): Promise<void> {
       pm === 'pnpm'
         ? await run(
             'pnpm',
-            ['dlx', `create-hollware@${version}`, 'my-cms', '--pm', 'pnpm', '--no-git'],
+            [
+              'dlx',
+              `create-hollware@${version}`,
+              'my-cms',
+              '--owner-email',
+              'olga@example.com',
+              '--pm',
+              'pnpm',
+              '--no-git',
+            ],
             work,
             env,
           )
@@ -71,6 +80,8 @@ async function main(): Promise<void> {
               '--',
               'create-hollware',
               'my-cms',
+              '--owner-email',
+              'olga@example.com',
               '--no-git',
             ],
             work,

@@ -4,7 +4,7 @@ import { ref } from 'vue'
 import StructureDialogs from '../../components/StructureDialogs.vue'
 import { useMessages } from '../../i18n/index.ts'
 import { MEDIA_MAX_WIDTH, MEDIA_MIN_WIDTH } from '@hollware/core'
-import { parseWidths } from '../../lib/media.ts'
+import { megabytesOf, parseMaxMegabytes, parseWidths } from '../../lib/media.ts'
 import { useSiteSettings } from '../../lib/site-settings.ts'
 
 const m = useMessages()
@@ -14,6 +14,8 @@ const imageMaxWidth = ref<number | undefined>(2400)
 const imageWidths = ref('')
 const keepOriginals = ref(true)
 const imageWidthsError = ref<string | null>(null)
+const maxMegabytes = ref<number | undefined>(100)
+const maxMegabytesError = ref<string | null>(null)
 
 const { structure, change, load, save } = useSiteSettings({
   fill: (read) => {
@@ -23,6 +25,8 @@ const { structure, change, load, save } = useSiteSettings({
     imageWidths.value = read.definition.media.widths.join(', ')
     keepOriginals.value = read.definition.media.keepOriginals
     imageWidthsError.value = null
+    maxMegabytes.value = megabytesOf(read.definition.media.maxBytes)
+    maxMegabytesError.value = null
   },
   values: () => [
     imageFormat.value,
@@ -30,6 +34,7 @@ const { structure, change, load, save } = useSiteSettings({
     imageMaxWidth.value,
     imageWidths.value,
     keepOriginals.value,
+    maxMegabytes.value,
   ],
 })
 
@@ -40,6 +45,12 @@ async function saveImages() {
     return
   }
   imageWidthsError.value = null
+  const most = parseMaxMegabytes(maxMegabytes.value)
+  if (!most.ok) {
+    maxMegabytesError.value = m.value.site.maxMegabytesInvalid(most.most)
+    return
+  }
+  maxMegabytesError.value = null
   await save((definition) => ({
     ...definition,
     media: {
@@ -48,7 +59,7 @@ async function saveImages() {
       maxWidth: imageMaxWidth.value ?? definition.media.maxWidth,
       widths: widths.widths,
       keepOriginals: keepOriginals.value,
-      maxBytes: definition.media.maxBytes,
+      maxBytes: most.bytes,
     },
   }))
 }
@@ -98,6 +109,13 @@ async function saveImages() {
         </UFormField>
         <UFormField :help="m.site.keepOriginalsHelp">
           <USwitch v-model="keepOriginals" :label="m.site.keepOriginals" />
+        </UFormField>
+        <UFormField
+          :label="m.site.maxMegabytes"
+          :help="m.site.maxMegabytesHelp"
+          :error="maxMegabytesError ?? undefined"
+        >
+          <UInput v-model.number="maxMegabytes" type="number" :min="1" class="w-40" />
         </UFormField>
         <UButton type="submit" :label="m.site.saveImages" :loading="change.busy.value" />
       </form>

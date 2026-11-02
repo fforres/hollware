@@ -198,11 +198,6 @@ export function clientBadge(comment: CommentAuthor): string | null {
     : comment.client
 }
 
-export interface Membership {
-  readonly site: string
-  readonly sites: readonly { readonly site: string; readonly role: string }[]
-}
-
-export function isOwnerOf(me: Membership | null): boolean {
-  return me?.sites.find((membership) => membership.site === me.site)?.role === 'owner'
+export function managesSite(me: { readonly scopes: readonly string[] } | null): boolean {
+  return me?.scopes.includes('schema:admin') ?? false
 }

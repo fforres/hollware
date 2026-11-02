@@ -344,6 +344,7 @@ export function createGateway(options: GatewayOptions): Gateway {
     oauth,
     protect: (c, proceed) => protectWrites(c, 'v1', proceed),
     metadataUrl: (c) => oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1,
+    log: options.log,
   })
 
   if (options.handlers !== undefined) {
@@ -421,8 +422,8 @@ export function createGateway(options: GatewayOptions): Gateway {
 
   app.get('/v1/backups/:date', (c) =>
     protectWrites(c, 'v1', async (principal) => {
-      if (missingScopes(principal, ['schema:admin']).length > 0) {
-        return insufficientScope(['schema:admin'], oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1)
+      if (missingScopes(principal, ['site:owner']).length > 0) {
+        return insufficientScope(['site:owner'], oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1)
       }
       const date = c.req.param('date')
       const bucket = backupBucketOf(c.env)

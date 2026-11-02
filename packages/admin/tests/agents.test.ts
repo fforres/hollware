@@ -11,7 +11,7 @@ import {
   emptyAgentForm,
   isAgentComment,
   isAgentUrl,
-  isOwnerOf,
+  managesSite,
   needsSecret,
   withAgent,
   withoutAgent,
@@ -211,16 +211,12 @@ describe('agents on a review', () => {
   })
 })
 
-describe('the owner of the site', () => {
-  it('is whoever has the owner role on the site they are signed in to', () => {
-    const sites = [
-      { site: 'blog', role: 'owner' },
-      { site: 'docs', role: 'editor' },
-    ]
+describe('who runs the site', () => {
+  it('is whoever may change it, an owner or an admin', () => {
     expect([
-      isOwnerOf({ site: 'blog', sites }),
-      isOwnerOf({ site: 'docs', sites }),
-      isOwnerOf(null),
+      managesSite({ scopes: ['content:read', 'schema:admin'] }),
+      managesSite({ scopes: ['content:read', 'content:publish'] }),
+      managesSite(null),
     ]).toEqual([true, false, false])
   })
 })

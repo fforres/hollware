@@ -46,9 +46,9 @@ const BLOG_DEFINITION =
 
 const SCRIPT = [
   `INSERT INTO sites (id, definition, version, created_at, updated_at) VALUES ('blog', '${BLOG_DEFINITION}', 1, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z') ON CONFLICT (id) DO UPDATE SET definition = excluded.definition, version = 1, updated_at = excluded.updated_at WHERE sites.definition IS NULL;`,
-  `INSERT INTO users (id, name, role, created_at, updated_at) VALUES ('${OWNER_ID}', 'Sergio', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+  `INSERT INTO users (id, name, role, email, email_verified_at, created_at, updated_at) VALUES ('${OWNER_ID}', 'Sergio', 'owner', 'olga@example.com', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES ('mbr_01M4QZQSG00R30C1G60R30C1G6', 'blog', '${OWNER_ID}', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
-  `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('${TOKEN_ID}', 'blog', '${OWNER_ID}', 'hollware init', '${HASH}', '["content:read","content:write","content:publish","schema:admin","review:read","review:comment"]', '2027-01-10T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+  `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('${TOKEN_ID}', 'blog', '${OWNER_ID}', 'hollware init', '${HASH}', '["content:read","content:write","content:publish","schema:admin","site:owner","review:read","review:comment"]', '2027-01-10T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   `INSERT OR IGNORE INTO site_changes (id, site_id, version, actor_user_id, actor_meta, before, after, created_at, updated_at) SELECT 'sit_01M4QZQSG00W3GE1R70W3GE1R7', id, 1, '${OWNER_ID}', NULL, NULL, definition, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z' FROM sites WHERE id = 'blog' AND version = 1 AND updated_at = '2026-10-12T12:00:00.000Z';`,
   `INSERT INTO invitations (id, site_id, hash, role, user_id, expires_at, used_at, created_at, updated_at) VALUES ('inv_01M4QZQSG00M2GA1850M2GA185', 'blog', '44a460337a32fc1946b319cfb5b958772000faaa3658fe6b12c1faf2b5aaee0f', 'owner', '${OWNER_ID}', '2026-10-19T12:00:00.000Z', NULL, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   '',
@@ -57,7 +57,7 @@ const SCRIPT = [
 const ANOTHER_SITE = [
   `INSERT INTO sites (id, definition, version, created_at, updated_at) VALUES ('docs', '${BLOG_DEFINITION}', 1, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z') ON CONFLICT (id) DO UPDATE SET definition = excluded.definition, version = 1, updated_at = excluded.updated_at WHERE sites.definition IS NULL;`,
   `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES ('mbr_01M4QZQSG00C1G60R30C1G60R3', 'docs', '${OWNER_ID}', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
-  `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('tok_01M4QZQSG0040G2081040G2081', 'docs', '${OWNER_ID}', 'hollware init', '4dae158c0f9ca15ca4364c007877155d279d027930f58291cc65e9f95b98b429', '["content:read","content:write","content:publish","schema:admin","review:read","review:comment"]', '2027-01-10T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+  `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('tok_01M4QZQSG0040G2081040G2081', 'docs', '${OWNER_ID}', 'hollware init', '4dae158c0f9ca15ca4364c007877155d279d027930f58291cc65e9f95b98b429', '["content:read","content:write","content:publish","schema:admin","site:owner","review:read","review:comment"]', '2027-01-10T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   `INSERT OR IGNORE INTO site_changes (id, site_id, version, actor_user_id, actor_meta, before, after, created_at, updated_at) SELECT 'sit_01M4QZQSG00G2081040G208104', id, 1, '${OWNER_ID}', NULL, NULL, definition, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z' FROM sites WHERE id = 'docs' AND version = 1 AND updated_at = '2026-10-12T12:00:00.000Z';`,
   '',
 ].join('\n')
@@ -70,6 +70,8 @@ describe('hollware init', () => {
 
     const { code, out, err } = await project.run([
       'init',
+      '--owner-email',
+      'olga@example.com',
       '--site',
       'blog',
       '--owner-name',
@@ -91,7 +93,7 @@ describe('hollware init', () => {
         'Site     blog',
         `Owner    ${OWNER_ID}`,
         `Token    ${TOKEN_ID}`,
-        'Scopes   content:read content:write content:publish schema:admin review:read review:comment',
+        'Scopes   content:read content:write content:publish schema:admin site:owner review:read review:comment',
         'Expires  2027-01-10T12:00:00.000Z (in 90 days)',
         '',
         'Your personal token. It is shown only once: Hollware keeps just its hash.',
@@ -140,7 +142,14 @@ describe('hollware init', () => {
     const wrangler = fakeWrangler(d1([]), d1([], [], []))
     const project = setup(wrangler)
 
-    const { code, out } = await project.run(['init', '--site', 'blog', ...flags])
+    const { code, out } = await project.run([
+      'init',
+      '--owner-email',
+      'olga@example.com',
+      '--site',
+      'blog',
+      ...flags,
+    ])
 
     expect(code).toBe(0)
     expect(wrangler.calls.map((call) => call.args[3])).toEqual([flag, flag])
@@ -151,7 +160,13 @@ describe('hollware init', () => {
     const wrangler = fakeWrangler(d1([{ id: OWNER_ID, site: 'blog' }]))
     const project = setup(wrangler)
 
-    const { code, out, err } = await project.run(['init', '--site', 'blog'])
+    const { code, out, err } = await project.run([
+      'init',
+      '--owner-email',
+      'olga@example.com',
+      '--site',
+      'blog',
+    ])
 
     expect(code).toBe(1)
     expect(out).toEqual([])
@@ -185,7 +200,13 @@ describe('hollware init', () => {
     const wrangler = fakeWrangler(d1Failed('no such table: users: SQLITE_ERROR'))
     const project = setup(wrangler)
 
-    const { code, out, err } = await project.run(['init', '--site', 'blog'])
+    const { code, out, err } = await project.run([
+      'init',
+      '--owner-email',
+      'olga@example.com',
+      '--site',
+      'blog',
+    ])
 
     expect(code).toBe(1)
     expect(out).toEqual([])
@@ -199,7 +220,15 @@ describe('hollware init', () => {
     const wrangler = fakeWrangler(d1([]), d1([], [], []))
     const project = setup(wrangler, {})
 
-    const { code, out } = await project.run(['init', '--site', 'blog', '--database', 'blog-db'])
+    const { code, out } = await project.run([
+      'init',
+      '--owner-email',
+      'olga@example.com',
+      '--site',
+      'blog',
+      '--database',
+      'blog-db',
+    ])
 
     expect(code).toBe(0)
     expect(wrangler.calls.map((call) => call.args)).toEqual([
@@ -215,7 +244,13 @@ describe('hollware init', () => {
       'wrangler.jsonc': '{ "d1_databases": [{ "binding": "CONTENT" }] }',
     })
 
-    const { code, err } = await project.run(['init', '--site', 'blog'])
+    const { code, err } = await project.run([
+      'init',
+      '--owner-email',
+      'olga@example.com',
+      '--site',
+      'blog',
+    ])
 
     expect(code).toBe(1)
     expect(err).toEqual([
@@ -230,6 +265,8 @@ describe('hollware init', () => {
 
     const { code } = await project.run([
       'init',
+      '--owner-email',
+      'olga@example.com',
       '--site',
       'blog',
       '--owner-name',
@@ -238,7 +275,7 @@ describe('hollware init', () => {
 
     expect(code).toBe(0)
     expect(wrangler.calls[1]?.sql?.split('\n')[1]).toBe(
-      `INSERT INTO users (id, name, role, created_at, updated_at) VALUES ('${OWNER_ID}', 'Sergio''s "ops" team; --', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+      `INSERT INTO users (id, name, role, email, email_verified_at, created_at, updated_at) VALUES ('${OWNER_ID}', 'Sergio''s "ops" team; --', 'owner', 'olga@example.com', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
     )
   })
 
@@ -260,15 +297,17 @@ describe('hollware init', () => {
     )
   })
 
-  it('stores no name for the owner when none is given', async () => {
-    const wrangler = fakeWrangler(d1([]), d1([], [], []))
+  it('refuses to make an owner without --owner-email, and writes nothing', async () => {
+    const wrangler = fakeWrangler(d1([]))
     const project = setup(wrangler)
 
-    await project.run(['init', '--site', 'blog'])
+    const { code, err } = await project.run(['init', '--site', 'blog'])
 
-    expect(wrangler.calls[1]?.sql?.split('\n')[1]).toBe(
-      `INSERT INTO users (id, name, role, created_at, updated_at) VALUES ('${OWNER_ID}', NULL, 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
-    )
+    expect(code).toBe(1)
+    expect(err).toEqual([
+      'hollware init: --owner-email is required to make the owner: name their address, such as --owner-email ada@example.com. Run "hollware init --help" for the options.',
+    ])
+    expect(wrangler.calls).toHaveLength(1)
   })
 
   it.each([
@@ -303,7 +342,12 @@ describe('hollware init', () => {
     const wrangler = fakeWrangler()
     const project = setup(wrangler)
 
-    const { code, out, err } = await project.run(['init', ...args])
+    const { code, out, err } = await project.run([
+      'init',
+      '--owner-email',
+      'olga@example.com',
+      ...args,
+    ])
 
     expect(code).toBe(1)
     expect(out).toEqual([])
@@ -316,7 +360,7 @@ describe('hollware init', () => {
     const wrangler = fakeWrangler(d1([]), d1([], [], []))
     const project = setup(wrangler)
 
-    await project.run(['init', '--site', 'blog'])
+    await project.run(['init', '--owner-email', 'olga@example.com', '--site', 'blog'])
 
     expect(wrangler.calls[1]?.mode).toBe(0o600)
     expect(existsSync(project.scratch)).toBe(false)
@@ -329,7 +373,13 @@ describe('hollware init', () => {
     )
     const project = setup(wrangler)
 
-    const { code, out, err } = await project.run(['init', '--site', 'blog'])
+    const { code, out, err } = await project.run([
+      'init',
+      '--owner-email',
+      'olga@example.com',
+      '--site',
+      'blog',
+    ])
 
     expect(code).toBe(1)
     expect(out).toEqual([])

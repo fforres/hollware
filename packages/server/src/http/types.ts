@@ -50,6 +50,7 @@ export type GatewayLogEntry =
   | RateLimitedLog
   | RefreshReusedLog
   | FederationRefusedLog
+  | InvitationMailFailedLog
   | AuditLogEntry
 
 export interface RefreshReusedLog {
@@ -62,5 +63,12 @@ export interface FederationRefusedLog {
   readonly kind: 'federation_refused'
   readonly requestId: string
   readonly provider: string
+  readonly reason: string
+}
+
+export interface InvitationMailFailedLog {
+  readonly kind: 'invitation_mail_failed'
+  readonly requestId: string
+  readonly invitation: string
   readonly reason: string
 }

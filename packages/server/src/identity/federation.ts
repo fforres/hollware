@@ -18,7 +18,8 @@ import {
   redeemInvitation,
   saveChallenge,
   takeChallenge,
-  userWithEmail,
+  userWithAddress,
+  verifyAddress,
 } from './store.ts'
 
 export { TokenRefused } from './jwt.ts'
@@ -367,8 +368,11 @@ export async function resolvePerson(
     await acceptInvitations(db, userId, email, now)
     return userId
   }
-  const owner = await userWithEmail(db, email)
-  if (owner !== null) return link(owner)
+  const owner = await userWithAddress(db, email)
+  if (owner !== null) {
+    await verifyAddress(db, owner, email, now)
+    return link(owner)
+  }
   const [invitation] = (await invitationsFor(db, email, now)).filter(
     (candidate) => candidate.userId === null,
   )
@@ -381,6 +385,7 @@ export async function resolvePerson(
       site: invitation.site,
       now,
       email,
+      verified: true,
     })
     return link(userId)
   }
@@ -395,6 +400,7 @@ export async function resolvePerson(
     site: site.key,
     now,
     email,
+    verified: true,
   })
   return link(userId)
 }

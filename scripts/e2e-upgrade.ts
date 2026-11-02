@@ -128,7 +128,8 @@ async function main(): Promise<void> {
     step('What the old release made still works')
     stopDev = (await startDev(project, env)).stop
     const listed = await mcp(token, 'tools/list', {})
-    if (!Array.isArray(listed['tools']) || listed['tools'].length !== OPERATIONS.length) {
+    const held = OPERATIONS.filter((spec) => !spec.scopes.some((scope) => scope === 'site:owner'))
+    if (!Array.isArray(listed['tools']) || listed['tools'].length !== held.length) {
       fail(`the old token listed ${JSON.stringify(listed['tools'])}`)
     }
     if ((await readPublished(token, 'published-before-the-upgrade')) !== 200) {

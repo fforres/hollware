@@ -60,6 +60,7 @@ export interface CommandInput {
   readonly query: string
   readonly site: string | null
   readonly role: string | null
+  readonly scopes: readonly string[]
   readonly sites: readonly { readonly site: string; readonly role: string }[]
   readonly collections: readonly string[]
   readonly entry: EntryCommands | null
@@ -160,7 +161,7 @@ export function commandGroups(input: CommandInput, m: Messages): CommandGroup[] 
           icon: 'i-lucide-layers',
           to: `/entries?collection=${encodeURIComponent(name)}`,
         })),
-        ...settingsGroups(input.role === 'owner').flatMap((group) =>
+        ...settingsGroups(input.scopes).flatMap((group) =>
           group.sections.map((section) => ({
             label: m.search.inSettings(m.settings.sections[section.key]),
             icon: section.icon,

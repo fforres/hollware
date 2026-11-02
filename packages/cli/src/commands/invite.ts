@@ -19,24 +19,27 @@ import {
 import { chooseSite, WHERE_OPTIONS } from './token.ts'
 
 export const INVITE_USAGE = [
-  'Usage: hollware invite (--role <editor | author> | --owner) [--email <address>] [--days <n>]',
+  'Usage: hollware invite (--role <admin | editor | author | reviewer> --email <address> | --owner)',
+  '                       [--days <n>]',
   '                       [--url <url>]',
   '                       [--site <key>] [--local | --remote] [--database <name>] [--json]',
   '       hollware invite list [--site <key>] [--local | --remote] [--database <name>]',
   '       hollware invite revoke <id> [--site <key>] [--local | --remote] [--database <name>]',
   '',
   'Invites a person to the admin: prints a link, valid once and for 7 days by default,',
-  'where they set up a passkey. An editor reads, writes and publishes; an author reads and writes,',
-  'and what an author publishes goes through review. With --owner, the link is for the owner of',
-  'the site, to set up a passkey: on a deployment that was made before the admin existed, or on a',
-  'new device. "invite list" shows the invitations that wait, and "invite revoke" stops the link',
-  'of one at once.',
+  'where they set up a passkey. An admin runs the site and its people, but never deletes it nor',
+  'names an owner; an editor reads, writes and publishes; an author reads and writes, and what an',
+  'author publishes goes through review; a reviewer reads and comments. With --owner, the link is',
+  'for the owner of the site, to set up a passkey: on a deployment that was made before the admin',
+  'existed, or on a new device. "invite list" shows the invitations that wait, and "invite revoke"',
+  'stops the link of one at once.',
   '',
   'Options:',
-  '  --role <role>      editor or author',
+  '  --role <role>      admin, editor, author or reviewer',
   '  --owner            A setup link for the owner of the site, instead of a new person',
-  '  --email <address>  The address the person signs in with through a provider: signing in with',
-  '                     it accepts the invitation, with or without the link',
+  '  --email <address>  The address of the person, required with --role: Hollware knows them by it,',
+  '                     and signing in with it through a provider accepts the invitation, with or',
+  '                     without the link',
   '  --days <n>         Days until the link expires, 1 to 365 (default: 7)',
   '  --url <url>        The public URL of Hollware (default: HOLLWARE_PUBLIC_URL of wrangler.jsonc)',
   '  --site <key>       The site (default: the only site of the database)',
@@ -49,9 +52,23 @@ export const INVITE_USAGE = [
   '  --help             Show this help',
 ].join('\n')
 
-function roleOf(value: string | undefined): 'editor' | 'author' {
-  if (value === 'editor' || value === 'author') return value
-  throw new UsageError('--role is required, and it is editor or author.')
+const INVITED = ['admin', 'editor', 'author', 'reviewer'] as const
+
+type Invited = (typeof INVITED)[number]
+
+const ARTICLE: Readonly<Record<Invited, string>> = {
+  admin: 'an admin',
+  editor: 'an editor',
+  author: 'an author',
+  reviewer: 'a reviewer',
+}
+
+function roleOf(value: string | undefined): Invited {
+  const role = INVITED.find((one) => one === value)
+  if (role === undefined) {
+    throw new UsageError('--role is required, and it is admin, editor, author or reviewer.')
+  }
+  return role
 }
 
 export async function invite(argv: readonly string[], io: Io): Promise<number> {
@@ -79,8 +96,17 @@ export async function invite(argv: readonly string[], io: Io): Promise<number> {
   if (forOwner && values.role !== undefined) {
     throw new UsageError('--owner and --role cannot be used together: choose one.')
   }
-  const role = forOwner ? 'owner' : roleOf(values.role)
+  const invited = forOwner ? null : roleOf(values.role)
+  const role = invited ?? 'owner'
   const days = values.days === undefined ? INVITATION_TTL_DAYS : parseExpiresInDays(values.days)
+  if (forOwner && values.email !== undefined) {
+    throw new UsageError('--owner and --email cannot be used together: --email names a new person.')
+  }
+  if (!forOwner && values.email === undefined) {
+    throw new UsageError(
+      '--email is required with --role: name the address of the person, such as --email ada@example.com.',
+    )
+  }
   const email = values.email === undefined ? undefined : parseEmail(values.email, '--email')
   const siteFlag = values.site === undefined ? undefined : parseSiteKey(values.site)
   const target = chooseTarget(values)
@@ -131,8 +157,8 @@ export async function invite(argv: readonly string[], io: Io): Promise<number> {
   }
   io.out(
     [
-      userId === null
-        ? `Invited an ${role} to the site "${site}". The link works once, until ${expiresAt}:`
+      invited !== null
+        ? `Invited ${ARTICLE[invited]} to the site "${site}". The link works once, until ${expiresAt}:`
         : `A setup link for the owner (${userId}) of the site "${site}", to set up a passkey. It works once, until ${expiresAt}:`,
       '',
       `  ${setupLink(url, secret)}`,

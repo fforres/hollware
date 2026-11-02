@@ -154,7 +154,7 @@ describe('parseScopes', () => {
     (value) => {
       expect(() => parseScopes(value)).toThrow(UsageError)
       expect(() => parseScopes(value)).toThrow(
-        /^invalid --scopes: ".*" is not a scope\. Choose from content:read, content:write, content:publish, schema:admin, review:read, review:comment\.$/,
+        /^invalid --scopes: ".*" is not a scope\. Choose from content:read, content:write, content:publish, schema:admin, site:owner, review:read, review:comment\.$/,
       )
     },
   )

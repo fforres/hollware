@@ -264,7 +264,7 @@ describe('GET /v1/backups/<date>', () => {
     const owner = await seedToken(env.DB, SITE_KEY, { expiresAt: '2026-12-01T00:00:00.000Z' })
     const writer = await seedToken(env.DB, SITE_KEY, {
       expiresAt: '2026-12-01T00:00:00.000Z',
-      scopes: ['content:read', 'content:write', 'content:publish'],
+      scopes: ['content:read', 'content:write', 'content:publish', 'schema:admin'],
     })
     await env.BACKUPS.put(backupKey(SITE_KEY, '2026-10-18'), '{"hollware":"backup/2"}')
     await env.MEDIA.put(backupKey(SITE_KEY, '2026-10-18'), '{"in":"media"}')
@@ -285,6 +285,6 @@ describe('GET /v1/backups/<date>', () => {
       '{"in":"media"}',
     ])
     expect(mine.headers.get('cache-control')).toBe('private, no-store')
-    expect(unscoped.headers.get('www-authenticate')).toContain('scope="schema:admin"')
+    expect(unscoped.headers.get('www-authenticate')).toContain('scope="site:owner"')
   })
 })

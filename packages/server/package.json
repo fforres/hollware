@@ -1,6 +1,6 @@
 {
   "name": "@hollware/server",
-  "version": "1.4.0",
+  "version": "1.5.1",
   "description": "The Hollware Worker: operation handlers, MCP, RPC, HTTP, auth and D1 migrations.",
   "homepage": "https://hollware.com",
   "bugs": {

@@ -70,6 +70,7 @@ async function saveAccess() {
             <USelect
               v-model="role"
               :items="[
+                { label: m.roles.reviewer ?? 'reviewer', value: 'reviewer' },
                 { label: m.roles.author ?? 'author', value: 'author' },
                 { label: m.roles.editor ?? 'editor', value: 'editor' },
               ]"

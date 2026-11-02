@@ -33,7 +33,7 @@ export const ANALYTICS_USAGE = [
   '',
   'Options:',
   '  --url <url>                The address of your Hollware, such as https://cms.example.com',
-  '  --token-file <file>        A file with a personal token of an owner (schema:admin); without it, stdin',
+  '  --token-file <file>        A file with a personal token of an owner or an admin (schema:admin); without it, stdin',
   '  --credential-file <file>   A file with the key of the provider; never on the command line',
   '  --hosts <a,b>              Hosts of the site besides the host of its url, such as www.example.com',
   '  --account <id>             cloudflare: the account, in the address of the dashboard (required)',

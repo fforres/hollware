@@ -6,10 +6,15 @@ import { auth } from './session.ts'
 export interface Me {
   readonly user: { readonly id: string; readonly name: string | null } | undefined
   readonly site: string
+  readonly scopes: readonly string[]
   readonly sites: readonly { readonly site: string; readonly role: string }[]
 }
 
 export const me = ref<Me | null>(null)
+
+export function can(person: Pick<Me, 'scopes'> | null, scope: string): boolean {
+  return person?.scopes.includes(scope) ?? false
+}
 
 export function useSiteMenu() {
   const m = useMessages()

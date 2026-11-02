@@ -51,7 +51,7 @@ const siteItems = useSiteMenu()
 
 const inSettings = computed(() => route.path.startsWith('/settings'))
 const settingsLinks = computed<NavigationMenuItem[][]>(() =>
-  settingsGroups(roleKey.value === 'owner').map((group) => [
+  settingsGroups(me.value?.scopes ?? []).map((group) => [
     { label: m.value.settings.groups[group.key], type: 'label' },
     ...group.sections.map((section) => ({
       label: m.value.settings.sections[section.key],
@@ -144,6 +144,7 @@ const searchGroups = computed(() =>
       query: term.value,
       site: me.value?.site ?? null,
       role: roleKey.value === '' ? null : roleKey.value,
+      scopes: me.value?.scopes ?? [],
       sites: me.value?.sites ?? [],
       collections: collections.value,
       entry: openEntry.value,

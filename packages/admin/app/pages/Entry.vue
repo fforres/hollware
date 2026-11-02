@@ -24,7 +24,7 @@ import {
   type Reference,
 } from '../lib/frontmatter.ts'
 import { openEntry } from '../lib/open-entry.ts'
-import { me } from '../lib/me.ts'
+import { can, me } from '../lib/me.ts'
 import { holdsSave, reviewLink, type PendingReview } from '../lib/pending-review.ts'
 import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
@@ -188,6 +188,7 @@ const untranslated = computed(() =>
 const original = computed(() =>
   translations.value.find((other) => other.locale === site.value?.defaultLocale),
 )
+const writable = computed(() => me.value === null || can(me.value, 'content:write'))
 const canPublish = computed(
   () =>
     entry.value !== null &&
@@ -272,7 +273,7 @@ function report(error: unknown, heading: string) {
 let saving: Promise<boolean> | null = null
 
 async function persist(): Promise<boolean> {
-  if (entry.value === null || !dirty.value) return true
+  if (entry.value === null || !dirty.value || !writable.value) return true
   if (holdsSave(pendingReview.value, overrideReview.value)) {
     heldOpen.value = true
     return false
@@ -888,6 +889,7 @@ const stateLabel = computed(
             />
           </UDropdownMenu>
           <UButton
+            v-if="writable"
             :label="m.entry.publish"
             color="secondary"
             :loading="busy"
@@ -932,6 +934,14 @@ const stateLabel = computed(
           ]"
         />
         <UAlert
+          v-if="!writable"
+          :title="m.entry.readOnly"
+          icon="i-lucide-eye"
+          color="neutral"
+          variant="subtle"
+          class="mb-6 ms-16"
+        />
+        <UAlert
           v-if="pendingReview !== null"
           :title="
             m.entry.reviewPending(
@@ -950,17 +960,24 @@ const stateLabel = computed(
           v-if="hasTitle"
           v-model="title"
           rows="1"
+          :readonly="!writable"
           :aria-label="m.entry.titleLabel"
           :placeholder="m.entry.untitled"
           class="field-sizing-content w-full resize-none ps-16 bg-transparent text-3xl leading-tight font-semibold text-highlighted outline-none placeholder:text-dimmed"
           @keydown.enter.prevent
         />
         <div class="mt-4">
-          <MarkdownEditor v-if="source" v-model="text" :diagnostics="diagnostics" />
+          <MarkdownEditor
+            v-if="source"
+            v-model="text"
+            :diagnostics="diagnostics"
+            :readonly="!writable"
+          />
           <EntryEditor
             v-else
             :body="body"
             :components="components"
+            :readonly="!writable"
             @update:body="setBody"
             @lossy="lossy = true"
           />
@@ -1132,13 +1149,15 @@ const stateLabel = computed(
           <h2 id="fields" class="text-xs font-semibold tracking-wide text-muted uppercase">
             {{ m.entry.tabs.fields }}
           </h2>
-          <FrontmatterForm
-            v-model="text"
-            :schema="definition?.schema ?? {}"
-            :omit="hasTitle ? ['title'] : []"
-            :references="references ?? {}"
-            @markdown="openMarkdown"
-          />
+          <fieldset :disabled="!writable" class="contents">
+            <FrontmatterForm
+              v-model="text"
+              :schema="definition?.schema ?? {}"
+              :omit="hasTitle ? ['title'] : []"
+              :references="references ?? {}"
+              @markdown="openMarkdown"
+            />
+          </fieldset>
         </section>
 
         <section :aria-labelledby="'checks'" class="space-y-3">

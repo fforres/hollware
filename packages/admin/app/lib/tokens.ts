@@ -5,6 +5,7 @@ export const TOKEN_SCOPES = [
   'content:write',
   'content:publish',
   'schema:admin',
+  'site:owner',
   'review:read',
   'review:comment',
 ] as const

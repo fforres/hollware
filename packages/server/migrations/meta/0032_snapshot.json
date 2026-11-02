@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "05303190-fd36-407d-89a1-139f675dc5d4",
+  "id": "48b08c24-f25c-46c4-96ee-9313b2730a2d",
   "prevId": "9ddfd525-9685-43da-808e-37330db6d04d",
   "tables": {
     "agent_grants": {
@@ -399,11 +399,11 @@
       "checkConstraints": {
         "assets_formats": {
           "name": "assets_formats",
-          "value": "\"assets\".\"format\" IN ('image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/svg+xml', 'video/mp4', 'video/webm', 'application/pdf') AND \"assets\".\"original_format\" IN ('image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/svg+xml', 'video/mp4', 'video/webm', 'application/pdf')"
+          "value": "\"assets\".\"format\" IN ('image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/svg+xml') AND \"assets\".\"original_format\" IN ('image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/svg+xml')"
         },
         "assets_sizes": {
           "name": "assets_sizes",
-          "value": "\"assets\".\"bytes\" > 0 AND \"assets\".\"original_bytes\" > 0 AND length(\"assets\".\"alt\") BETWEEN 1 AND 500 AND length(\"assets\".\"filename\") BETWEEN 1 AND 200 AND length(\"assets\".\"sha256\") = 64"
+          "value": "\"assets\".\"bytes\" > 0 AND \"assets\".\"original_bytes\" BETWEEN 1 AND 10485760 AND length(\"assets\".\"alt\") BETWEEN 1 AND 500 AND length(\"assets\".\"filename\") BETWEEN 1 AND 200 AND length(\"assets\".\"sha256\") = 64"
         }
       }
     },
@@ -699,7 +699,7 @@
       "checkConstraints": {
         "auth_challenges_purpose": {
           "name": "auth_challenges_purpose",
-          "value": "\"auth_challenges\".\"purpose\" IN ('register', 'authenticate', 'federate', 'enroll')"
+          "value": "\"auth_challenges\".\"purpose\" IN ('register', 'authenticate', 'federate', 'enroll', 'accept')"
         }
       }
     },
@@ -1461,6 +1461,20 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -1513,7 +1527,7 @@
       "checkConstraints": {
         "invitations_role": {
           "name": "invitations_role",
-          "value": "\"invitations\".\"role\" IN ('owner', 'editor', 'author')"
+          "value": "\"invitations\".\"role\" IN ('owner', 'admin', 'editor', 'author', 'reviewer')"
         }
       }
     },
@@ -1614,7 +1628,7 @@
       "checkConstraints": {
         "members_role": {
           "name": "members_role",
-          "value": "\"members\".\"role\" IN ('owner', 'editor', 'author')"
+          "value": "\"members\".\"role\" IN ('owner', 'admin', 'editor', 'author', 'reviewer')"
         }
       }
     },

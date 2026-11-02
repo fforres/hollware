@@ -75,7 +75,9 @@ describe('create-hollware <dir>', () => {
     expect(read('wrangler.jsonc')).toContain('"bucket_name": "blog-cms-backups"')
     expect(read('wrangler.jsonc')).not.toContain('my-hollware')
     expect(existsSync(join(cwd, 'blog-cms', 'hollware.config.ts'))).toBe(false)
-    expect(read('README.md')).toContain('hollware init --site blog --local')
+    expect(read('README.md')).toContain(
+      'hollware init --site blog --owner-email you@example.com --local',
+    )
     expect(read('README.md')).not.toContain('my-site')
     expect(existsSync(join(cwd, 'blog-cms', '.gitignore'))).toBe(true)
     expect(existsSync(join(cwd, 'blog-cms', 'gitignore'))).toBe(false)
@@ -116,7 +118,10 @@ describe('create-hollware <dir>', () => {
   it('runs git init, the install, the migrations and init, in the project', async () => {
     const { io, calls, out, cwd } = world()
 
-    const code = await create(['blog-cms', '--site', 'blog', '--pm', 'pnpm'], io)
+    const code = await create(
+      ['blog-cms', '--owner-email', 'olga@example.com', '--site', 'blog', '--pm', 'pnpm'],
+      io,
+    )
 
     const project = join(cwd, 'blog-cms')
     const hollware = join(project, 'node_modules', '.bin', 'hollware')
@@ -126,7 +131,11 @@ describe('create-hollware <dir>', () => {
       { command: 'pnpm', args: ['install'], cwd: project },
       { command: join(project, 'node_modules', '.bin', 'vp'), args: ['fmt'], cwd: project },
       { command: hollware, args: ['migrate', '--local'], cwd: project },
-      { command: hollware, args: ['init', '--site', 'blog', '--local'], cwd: project },
+      {
+        command: hollware,
+        args: ['init', '--site', 'blog', '--owner-email', 'olga@example.com', '--local'],
+        cwd: project,
+      },
     ])
     expect(out).toContain(INIT_ANSWER.trim())
     expect(out.at(-1)).toBe(
@@ -159,6 +168,8 @@ describe('create-hollware <dir>', () => {
         'hashed',
         '--audit-retention-days',
         '365',
+        '--owner-email',
+        'olga@example.com',
         '--no-git',
       ],
       io,
@@ -179,6 +190,8 @@ describe('create-hollware <dir>', () => {
         'hashed',
         '--audit-retention-days',
         '365',
+        '--owner-email',
+        'olga@example.com',
         '--local',
       ],
       cwd: project,
@@ -222,15 +235,18 @@ describe('create-hollware <dir>', () => {
   it('refuses an --auth it does not know, and one that lacks what its kind needs', async () => {
     const { io } = world()
 
-    await expect(create(['blog-cms', '--auth', 'saml'], io)).rejects.toThrow(
-      '--auth is google, microsoft, github, oidc, cloudflare-access, not "saml"',
-    )
-    await expect(create(['blog-cms', '--auth', 'oidc', '--client-id', 'x'], io)).rejects.toThrow(
-      '--auth oidc needs --issuer',
-    )
-    await expect(create(['blog-cms', '--auth', 'cloudflare-access'], io)).rejects.toThrow(
-      '--auth cloudflare-access needs --team-domain',
-    )
+    await expect(
+      create(['blog-cms', '--owner-email', 'olga@example.com', '--auth', 'saml'], io),
+    ).rejects.toThrow('--auth is google, microsoft, github, oidc, cloudflare-access, not "saml"')
+    await expect(
+      create(
+        ['blog-cms', '--owner-email', 'olga@example.com', '--auth', 'oidc', '--client-id', 'x'],
+        io,
+      ),
+    ).rejects.toThrow('--auth oidc needs --issuer')
+    await expect(
+      create(['blog-cms', '--owner-email', 'olga@example.com', '--auth', 'cloudflare-access'], io),
+    ).rejects.toThrow('--auth cloudflare-access needs --team-domain')
   })
 
   it('leaves the Worker without a config when --auth is not given', async () => {
@@ -241,12 +257,23 @@ describe('create-hollware <dir>', () => {
     expect(read('src/worker.ts')).toContain('createHollware()')
   })
 
+  it('refuses to make the site without --owner-email, and writes nothing', async () => {
+    const { io, calls, cwd } = world()
+
+    await expect(create(['blog-cms'], io)).rejects.toThrow(
+      'pass --owner-email with your address, such as --owner-email ada@example.com: the owner of the site is known by it',
+    )
+
+    expect(calls).toEqual([])
+    expect(existsSync(join(cwd, 'blog-cms'))).toBe(false)
+  })
+
   it('refuses a directory that is not empty, and writes nothing', async () => {
     const { io, cwd, calls } = world()
     mkdirSync(join(cwd, 'blog-cms'))
     writeFileSync(join(cwd, 'blog-cms', 'notes.txt'), 'mine')
 
-    await expect(create(['blog-cms'], io)).rejects.toThrow(
+    await expect(create(['blog-cms', '--owner-email', 'olga@example.com'], io)).rejects.toThrow(
       `${join(cwd, 'blog-cms')} is not empty: choose a new directory.`,
     )
     expect(existsSync(join(cwd, 'blog-cms', 'package.json'))).toBe(false)
@@ -262,7 +289,9 @@ describe('create-hollware <dir>', () => {
       },
     })
 
-    await expect(create(['blog-cms', '--no-git'], io)).rejects.toThrow(
+    await expect(
+      create(['blog-cms', '--owner-email', 'olga@example.com', '--no-git'], io),
+    ).rejects.toThrow(
       'The install failed (npm install):\nnpm ERR! 404 Not Found: @hollware/server@0.4.0',
     )
     expect(calls.map((call) => call.command)).toEqual(['npm'])
@@ -275,13 +304,25 @@ describe('create-hollware, for an agent', () => {
       'hollware init': { code: 0, stdout: 'Hollware is ready.\n', stderr: '' },
     })
 
-    await create(['blog-cms', '--token-file', 'blog-cms/owner.token', '--no-git'], io)
+    await create(
+      [
+        'blog-cms',
+        '--owner-email',
+        'olga@example.com',
+        '--token-file',
+        'blog-cms/owner.token',
+        '--no-git',
+      ],
+      io,
+    )
 
     const file = join(cwd, 'blog-cms', 'owner.token')
     expect(calls.at(-1)?.args).toEqual([
       'init',
       '--site',
       'my-site',
+      '--owner-email',
+      'olga@example.com',
       '--token-file',
       file,
       '--local',
@@ -296,7 +337,9 @@ describe('create-hollware, for an agent', () => {
     const { io, calls, cwd } = world()
     writeFileSync(join(cwd, 'owner.token'), 'keep\n')
 
-    await expect(create(['blog-cms', '--token-file', 'owner.token'], io)).rejects.toThrow(
+    await expect(
+      create(['blog-cms', '--owner-email', 'olga@example.com', '--token-file', 'owner.token'], io),
+    ).rejects.toThrow(
       `${join(cwd, 'owner.token')} exists already, and a token is never written over a file: choose another --token-file.`,
     )
 
@@ -319,10 +362,21 @@ describe('create-hollware, for an agent', () => {
       'hollware init': { code: 0, stdout: `${JSON.stringify(init)}\n`, stderr: '' },
     })
 
-    const code = await create(['blog-cms', '--json', '--pm', 'pnpm'], io)
+    const code = await create(
+      ['blog-cms', '--owner-email', 'olga@example.com', '--json', '--pm', 'pnpm'],
+      io,
+    )
 
     expect(code).toBe(0)
-    expect(calls.at(-1)?.args).toEqual(['init', '--site', 'my-site', '--local', '--json'])
+    expect(calls.at(-1)?.args).toEqual([
+      'init',
+      '--site',
+      'my-site',
+      '--owner-email',
+      'olga@example.com',
+      '--local',
+      '--json',
+    ])
     expect(out).toHaveLength(1)
     expect(JSON.parse(out[0] ?? '')).toEqual({
       dir: join(cwd, 'blog-cms'),
@@ -361,7 +415,7 @@ describe('create-hollware, for an agent', () => {
           'npm install',
           'npm exec vp fmt',
           'npm exec hollware migrate --local',
-          'npm exec hollware init --site my-site --local',
+          'npm exec hollware init --site my-site --owner-email you@example.com --local',
         ],
       },
     ])
@@ -378,7 +432,7 @@ describe('create-hollware, for an agent', () => {
   it('starts it with no cd when the project is the directory it runs in', async () => {
     const { io, out } = world()
 
-    await create(['.', '--name', 'blog-cms', '--no-git'], io)
+    await create(['.', '--owner-email', 'olga@example.com', '--name', 'blog-cms', '--no-git'], io)
 
     expect(out.at(-1)?.split('\n').slice(1, 3)).toEqual(['Start it:', '  npm exec hollware dev'])
   })

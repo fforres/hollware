@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers'
+import type { Role } from '../../src/auth/roles.ts'
 import { connect } from '../../src/db/d1.ts'
 import { createSession } from '../../src/identity/store.ts'
 import { seedToken } from '../auth/support.ts'
@@ -13,7 +14,7 @@ function base64url(bytes: Uint8Array): string {
 
 export async function adminToken(
   worker: Booted,
-  role: 'owner' | 'editor' | 'author',
+  role: Role,
   alsoEditorOf: readonly string[] = [],
 ): Promise<string> {
   return (await adminPerson(worker, role, alsoEditorOf)).access
@@ -21,7 +22,7 @@ export async function adminToken(
 
 export async function adminPerson(
   worker: Booted,
-  role: 'owner' | 'editor' | 'author',
+  role: Role,
   alsoEditorOf: readonly string[] = [],
 ): Promise<{ access: string; userId: string; token: string }> {
   const { userId, token } = await seedToken(env.DB, SITE_KEY, { role })

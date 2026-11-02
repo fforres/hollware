@@ -275,6 +275,7 @@ export function installIdentity(app: Hono<GatewayEnv>, options: IdentityOptions)
     )
   app.use('/auth/register/*', async (_c, next) => (options.auth.passkeys ? next() : passkeysOff()))
   app.use('/auth/signin/*', async (_c, next) => (options.auth.passkeys ? next() : passkeysOff()))
+  app.use('/auth/accept/*', async (_c, next) => (options.auth.passkeys ? next() : passkeysOff()))
 
   app.post(
     '/auth/register/options',
@@ -311,6 +312,45 @@ export function installIdentity(app: Hono<GatewayEnv>, options: IdentityOptions)
         outcome: 'ok',
         target: { type: 'user', id: answer.userId },
       })
+      return c.json({ ok: true }, 200, { 'set-cookie': sessionCookie(answer.session) })
+    }),
+  )
+  app.post(
+    '/auth/accept/options',
+    handle(async (c) =>
+      c.json(
+        await (
+          await ceremonies()
+        ).acceptanceOptions(ceremony(c), text((await body(c))['invitation'])),
+      ),
+    ),
+  )
+  app.post(
+    '/auth/accept/verify',
+    handle(async (c) => {
+      const input = await body(c)
+      const response = input['response']
+      if (!isRecord(response)) {
+        throw new HollwareError(
+          'invalid_input',
+          'The body has no passkey.',
+          'Send the credential as JSON.',
+        )
+      }
+      const answer = await (
+        await ceremonies()
+      ).verifyAcceptance(ceremony(c), {
+        challengeId: text(input['challengeId']),
+        response: JSON.parse(JSON.stringify(response)),
+      })
+      const site = await options.site(c, answer.site)
+      if (site !== undefined) {
+        await options.audit(c, personActor(answer.userId)).write(site, {
+          action: 'invitation.accept',
+          outcome: 'ok',
+          target: { type: 'user', id: answer.userId },
+        })
+      }
       return c.json({ ok: true }, 200, { 'set-cookie': sessionCookie(answer.session) })
     }),
   )

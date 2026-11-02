@@ -1,6 +1,6 @@
 {
   "name": "@hollware/react",
-  "version": "1.4.0",
+  "version": "1.5.1",
   "description": "Read Hollware from any React app: server helpers, previews and a component that renders an entry's Comark document.",
   "homepage": "https://hollware.com",
   "bugs": {

@@ -17,7 +17,7 @@ current directory through its wrangler. POSIX shells only: it has not been tried
 | `deploy`     | Deploy to Cloudflare, creating what the project needs, and migrate the database  |
 | `doctor`     | Check the project, its bindings, its database and its owner, with what to fix    |
 | `token`      | Create, list and revoke personal tokens, and read tokens with `--read`           |
-| `invite`     | Invite a person to the admin, as an editor or an author                          |
+| `invite`     | Invite a person to the admin by their address: admin, editor, author or reviewer |
 | `agent`      | Add, list and remove the agent members of a site, and revoke their grants        |
 | `import`     | Import Markdown over MCP, as drafts; from a Nuxt Content site with `--from`      |
 | `export`     | Export entries and their images over MCP, the layout `import` reads              |
@@ -52,7 +52,7 @@ In a Hollware project (the starter has the D1 binding `DB` in its `wrangler.json
 
 ```sh
 hollware migrate                         # create the tables in the local database
-hollware init --site blog                # create the site and its owner; prints a token, once
+hollware init --site blog --owner-email you@example.com   # the site and its owner; a token, once
 hollware token create --label ci --scopes content:read,content:write
 hollware token list                      # never shows a hash
 hollware token revoke tok_01JAB3XQ8ZK4M6N2P5R7S9T0VW
@@ -61,7 +61,7 @@ hollware token revoke tok_01JAB3XQ8ZK4M6N2P5R7S9T0VW
 To put it on Cloudflare, log in with `wrangler login` and run `hollware deploy`: the first deploy
 creates the D1 database, the KV namespace and the queues, writes their ids and the public URL of
 the Worker into `wrangler.jsonc`, and applies the migrations. Then `hollware init --site blog
---remote` makes the site in it.
+--owner-email you@example.com --remote` makes the site in it.
 
 ### Staging and production
 
@@ -74,7 +74,7 @@ export CLOUDFLARE_ENV=staging
 vp build                                  # the build of env.staging
 wrangler deploy                           # the first time, creates the D1, KV and R2 it names
 hollware migrate --remote                 # only once the D1 exists
-hollware init --site blog --remote --url https://cms-staging.example.com
+hollware init --site blog --owner-email you@example.com --remote --url https://cms-staging.example.com
 ```
 
 `migrate --remote` cannot run before the first deploy: the D1 database of the environment does not

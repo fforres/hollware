@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { asksForMajor, inPreMode, majorsSince, promisedTag, verdictOf } from './api-check.ts'
+import {
+  acceptedBreaks,
+  asksForMajor,
+  inPreMode,
+  majorsSince,
+  promisedTag,
+  verdictOf,
+} from './api-check.ts'
 
 describe('the release that holds the promise of the public API', () => {
   it('is none before 1.0.0-rc.0, whatever 0.x says', () => {
@@ -76,5 +83,31 @@ describe('what the check answers to a change of the public API', () => {
       inPreMode(null),
       inPreMode('not json'),
     ]).toEqual([true, false, false, false])
+  })
+})
+
+describe('a break the maintainer accepted for one minor version', () => {
+  const accepted = JSON.stringify({
+    against: '@hollware/core@1.4.0',
+    reason: 'Only the maintainer runs Hollware.',
+    breaks: ['mcp delete_site: now asks for site:owner'],
+  })
+
+  it('is each line it lists, against the release it names, with a reason', () => {
+    expect([...acceptedBreaks(accepted, '@hollware/core@1.4.0')]).toEqual([
+      'mcp delete_site: now asks for site:owner',
+    ])
+  })
+
+  it('is nothing against another release, without a reason, or from a file that is no JSON', () => {
+    const unreasoned = JSON.stringify({ ...JSON.parse(accepted), reason: ' ' })
+    expect(
+      [
+        acceptedBreaks(accepted, '@hollware/core@1.5.0'),
+        acceptedBreaks(unreasoned, '@hollware/core@1.4.0'),
+        acceptedBreaks('{', '@hollware/core@1.4.0'),
+        acceptedBreaks(null, '@hollware/core@1.4.0'),
+      ].map((set) => set.size),
+    ).toEqual([0, 0, 0, 0])
   })
 })

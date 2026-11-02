@@ -27,7 +27,12 @@ function world(answer: () => Response) {
         url: typeof input === 'string' ? input : input instanceof URL ? input.href : input.url,
         method: init?.method ?? 'GET',
         authorization: new Headers(init?.headers).get('authorization'),
-        body: typeof init?.body === 'string' ? init.body : '',
+        body:
+          typeof init?.body === 'string'
+            ? init.body
+            : init?.body instanceof Blob
+              ? `a file of ${init.body.size} bytes`
+              : '',
       })
       return answer()
     },
@@ -104,6 +109,49 @@ it('answers an error in words as an ApiError, with its code and its fix', async 
     new ApiError('forbidden', 'Only the admin may do this.', 'Sign in.'),
   )
   await expect(w.api.admin('tokens')).rejects.toMatchObject({ code: 'forbidden', fix: 'Sign in.' })
+})
+
+it('streams a file to PUT /v1/assets, named in the query, and tells of the write', async () => {
+  const w = world(() => Response.json({ outcome: 'created' }, { status: 201 }))
+
+  const answer = await w.api.upload(new Blob(['%PDF-1.7 abc']), {
+    filename: 'the policy.pdf',
+    alt: 'Policy & terms',
+  })
+
+  expect(answer).toEqual({ outcome: 'created' })
+  expect(w.sent).toEqual([
+    {
+      url: '/v1/assets?filename=the+policy.pdf&alt=Policy+%26+terms',
+      method: 'PUT',
+      authorization: 'Bearer access-1',
+      body: 'a file of 12 bytes',
+    },
+  ])
+  expect(w.writes()).toBe(1)
+})
+
+it('answers a refused upload with the problem the server gives', async () => {
+  const w = world(() =>
+    Response.json(
+      {
+        outcome: 'refused',
+        problem: {
+          message: 'The file is 300 bytes, more than the 200 the site takes.',
+          fix: 'Make it smaller.',
+        },
+      },
+      { status: 413 },
+    ),
+  )
+
+  await expect(w.api.upload(new Blob(['x']), { filename: 'a.mp4', alt: 'A' })).rejects.toEqual(
+    new ApiError(
+      'internal',
+      'The file is 300 bytes, more than the 200 the site takes.',
+      'Make it smaller.',
+    ),
+  )
 })
 
 it('tells of every write once it is done, and of no read, so what the admin shows is read again', async () => {

@@ -62,6 +62,22 @@ export function majorsSince(
     .map((changeset) => changeset.name)
 }
 
+export function acceptedBreaks(json: string | null, ref: string): Set<string> {
+  if (json === null) return new Set()
+  try {
+    const parsed: unknown = JSON.parse(json)
+    if (typeof parsed !== 'object' || parsed === null) return new Set()
+    const against: unknown = Reflect.get(parsed, 'against')
+    const breaks: unknown = Reflect.get(parsed, 'breaks')
+    const reason: unknown = Reflect.get(parsed, 'reason')
+    if (against !== ref || typeof reason !== 'string' || reason.trim() === '') return new Set()
+    if (!Array.isArray(breaks)) return new Set()
+    return new Set(breaks.filter((line): line is string => typeof line === 'string'))
+  } catch {
+    return new Set()
+  }
+}
+
 export function inPreMode(preJson: string | null): boolean {
   if (preJson === null) return false
   try {
@@ -80,6 +96,14 @@ export function verdictOf(
   if (breaks.length === 0) return 'fits'
   if (pre) return 'frozen'
   return majors.length > 0 ? 'carried' : 'refused'
+}
+
+function acceptedJsonOf(root: string): string | null {
+  try {
+    return readFileSync(join(root, '.changeset', 'accepted-breaks.json'), 'utf8')
+  } catch {
+    return null
+  }
 }
 
 function preJsonOf(root: string): string | null {
@@ -152,7 +176,15 @@ export async function main(root: string, argv: readonly string[]): Promise<numbe
     console.log(`${ref} has no api/: nothing to compare with.`)
     return 0
   }
-  const breaks = breakingChanges(before, now)
+  const accepted = acceptedBreaks(acceptedJsonOf(root), ref)
+  const found = breakingChanges(before, now)
+  const breaks = found.filter((line) => !accepted.has(line))
+  const taken = found.filter((line) => accepted.has(line))
+  if (taken.length > 0) {
+    console.log(
+      `What breaks since ${ref}, accepted in .changeset/accepted-breaks.json:\n${taken.map((line) => `  - ${line}`).join('\n')}`,
+    )
+  }
   const majors = majorsSince(changesetsOf(root), releasedAt(root, ref))
   const list = breaks.map((line) => `  - ${line}`).join('\n')
   switch (verdictOf(breaks, majors, inPreMode(preJsonOf(root)))) {

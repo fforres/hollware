@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "2fb6dbf1-b201-4994-9335-c42127639317",
-  "prevId": "05303190-fd36-407d-89a1-139f675dc5d4",
+  "id": "5eb9d376-e43e-43d2-b2fd-7936e773c05e",
+  "prevId": "48b08c24-f25c-46c4-96ee-9313b2730a2d",
   "tables": {
     "agent_grants": {
       "name": "agent_grants",
@@ -699,7 +699,7 @@
       "checkConstraints": {
         "auth_challenges_purpose": {
           "name": "auth_challenges_purpose",
-          "value": "\"auth_challenges\".\"purpose\" IN ('register', 'authenticate', 'federate', 'enroll')"
+          "value": "\"auth_challenges\".\"purpose\" IN ('register', 'authenticate', 'federate', 'enroll', 'accept')"
         }
       }
     },
@@ -1461,6 +1461,20 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -1513,7 +1527,7 @@
       "checkConstraints": {
         "invitations_role": {
           "name": "invitations_role",
-          "value": "\"invitations\".\"role\" IN ('owner', 'editor', 'author')"
+          "value": "\"invitations\".\"role\" IN ('owner', 'admin', 'editor', 'author', 'reviewer')"
         }
       }
     },
@@ -1614,7 +1628,7 @@
       "checkConstraints": {
         "members_role": {
           "name": "members_role",
-          "value": "\"members\".\"role\" IN ('owner', 'editor', 'author')"
+          "value": "\"members\".\"role\" IN ('owner', 'admin', 'editor', 'author', 'reviewer')"
         }
       }
     },
@@ -4118,135 +4132,6 @@
         "unpublishes_json": {
           "name": "unpublishes_json",
           "value": "\"unpublishes\".\"actor_meta\" IS NULL OR json_valid(\"unpublishes\".\"actor_meta\")"
-        }
-      }
-    },
-    "uploads": {
-      "name": "uploads",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "site_id": {
-          "name": "site_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "key": {
-          "name": "key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "multipart_id": {
-          "name": "multipart_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "filename": {
-          "name": "filename",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "alt": {
-          "name": "alt",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "bytes": {
-          "name": "bytes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "part_bytes": {
-          "name": "part_bytes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "uploads_expiry": {
-          "name": "uploads_expiry",
-          "columns": [
-            "expires_at"
-          ],
-          "isUnique": false
-        },
-        "uploads_id_site": {
-          "name": "uploads_id_site",
-          "columns": [
-            "id",
-            "site_id"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {
-        "uploads_site": {
-          "name": "uploads_site",
-          "tableFrom": "uploads",
-          "tableTo": "sites",
-          "columnsFrom": [
-            "site_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {
-        "uploads_sizes": {
-          "name": "uploads_sizes",
-          "value": "\"uploads\".\"bytes\" > 0 AND \"uploads\".\"part_bytes\" >= 5242880 AND length(\"uploads\".\"alt\") BETWEEN 1 AND 500 AND length(\"uploads\".\"filename\") BETWEEN 1 AND 200"
         }
       }
     },

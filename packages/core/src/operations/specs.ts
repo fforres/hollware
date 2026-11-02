@@ -490,7 +490,7 @@ export const listBackups = defineOperation({
       )
       .optional(),
   }),
-  scopes: ['schema:admin'],
+  scopes: ['site:owner'],
   effect: 'read',
   outcomes: { ok: { isError: false }, unavailable: { isError: true } },
 })
@@ -1146,7 +1146,7 @@ export const createSite = defineOperation({
       .optional()
       .describe('With invalid: every problem, each with its fix.'),
   }),
-  scopes: ['schema:admin'],
+  scopes: ['site:owner'],
   effect: 'write',
   outcomes: { created: { isError: false }, taken: { isError: true }, invalid: { isError: true } },
 })
@@ -1165,7 +1165,7 @@ export const deleteSite = defineOperation({
       .optional()
       .describe('With needs_confirmation: the entries the site holds.'),
   }),
-  scopes: ['schema:admin'],
+  scopes: ['site:owner'],
   effect: 'destructive',
   outcomes: {
     trashed: { isError: false },
@@ -1181,7 +1181,7 @@ export const restoreSite = defineOperation({
     'Brings back a site you own from the trash, as it was: served again, with its entries and tokens.',
   input: z.strictObject({ key: siteKey }),
   output: z.object({ outcome: z.enum(['restored', 'not_found']) }),
-  scopes: ['schema:admin'],
+  scopes: ['site:owner'],
   effect: 'write',
   outcomes: { restored: { isError: false }, not_found: { isError: true } },
 })

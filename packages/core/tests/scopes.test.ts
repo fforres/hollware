@@ -9,12 +9,13 @@ import {
 } from '../src/scopes.ts'
 
 describe('scopes', () => {
-  it('are the four scopes of the design and the two of reviews', () => {
+  it('are the four scopes of the design, that of owners and the two of reviews', () => {
     expect(SCOPES).toEqual([
       'content:read',
       'content:write',
       'content:publish',
       'schema:admin',
+      'site:owner',
       'review:read',
       'review:comment',
     ])

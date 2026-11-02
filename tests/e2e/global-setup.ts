@@ -21,6 +21,8 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     SITE_KEY,
     '--owner-name',
     'Olga',
+    '--owner-email',
+    'olga@example.com',
     '--url',
     url,
   )

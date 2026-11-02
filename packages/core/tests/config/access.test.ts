@@ -63,6 +63,22 @@ describe('access of a site', () => {
       autoProvision: { domains: ['acme.com'], emails: [], role: 'editor' },
     })
   })
+
+  it('lets in reviewers, who read and comment', () => {
+    const resolved = compileSites({
+      demo: {
+        locales: ['en'],
+        defaultLocale: 'en',
+        collections: {
+          pages: { schema: { type: 'object' }, routes: { en: '/:slug/' } },
+        },
+        access: { autoProvision: { emails: ['ada@acme.com'], role: 'reviewer' } },
+      },
+    })
+    expect(siteOf(resolved, 'demo').access).toEqual({
+      autoProvision: { domains: [], emails: ['ada@acme.com'], role: 'reviewer' },
+    })
+  })
 })
 
 const ACCESS_FIX =
@@ -103,8 +119,19 @@ describe('problems of the access of a site', () => {
       problems: [
         {
           path: 'sites.demo.access.autoProvision.role',
-          message: 'is "owner"; it must be "author" or "editor"',
-          fix: 'An owner is only ever made by another owner: use "author" or "editor".',
+          message: 'is "owner"; it must be "reviewer", "author" or "editor"',
+          fix: 'An owner or an admin is only ever made by a person: use "reviewer", "author" or "editor".',
+        },
+      ],
+    },
+    {
+      name: 'the role of admin',
+      access: { autoProvision: { domains: ['acme.com'], role: 'admin' } },
+      problems: [
+        {
+          path: 'sites.demo.access.autoProvision.role',
+          message: 'is "admin"; it must be "reviewer", "author" or "editor"',
+          fix: 'An owner or an admin is only ever made by a person: use "reviewer", "author" or "editor".',
         },
       ],
     },

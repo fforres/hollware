@@ -10,7 +10,7 @@ import { useBulkReport } from '../lib/bulk-report.ts'
 import { useMessages } from '../i18n/index.ts'
 import { entryPath, titleOf } from '../lib/entries.ts'
 import { matches } from '../lib/entry-list.ts'
-import { me } from '../lib/me.ts'
+import { can, me } from '../lib/me.ts'
 import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
@@ -145,9 +145,7 @@ const restorable = (entry: Row) => entry.deletedAt !== null
 
 const unpublishing = ref<Row[]>([])
 const trashing = ref<Row[]>([])
-const owner = computed(
-  () => me.value?.sites.find((membership) => membership.site === me.value?.site)?.role === 'owner',
-)
+const owner = computed(() => can(me.value, 'site:owner'))
 const purgeable = (entry: Row) => entry.deletedAt !== null && owner.value
 const purging = ref<Row[]>([])
 const scheduling = ref<Row[]>([])

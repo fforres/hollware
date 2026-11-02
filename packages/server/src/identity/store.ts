@@ -1,7 +1,7 @@
 import { newId } from '@hollware/core'
 import { and, desc, eq, gt, isNotNull, isNull, lte, or } from 'drizzle-orm'
 import type { Db } from '../db/d1.ts'
-import { legacyRoleOf } from '../auth/roles.ts'
+import { isRole, legacyRoleOf, type Role } from '../auth/roles.ts'
 import {
   agentGrants,
   authChallenges,
@@ -14,32 +14,47 @@ import {
 } from '../db/schema.ts'
 import { hashSecret, newSecret } from './secrets.ts'
 
-export type Role = 'owner' | 'editor' | 'author'
+export type { Role }
 
 export interface Invitation {
   readonly id: string
   readonly site: string
   readonly role: Role
   readonly userId: string | null
+  readonly email: string | null
+  readonly sentAt: string | null
 }
 
-export type ChallengePurpose = 'register' | 'authenticate' | 'federate' | 'enroll'
+export type ChallengePurpose = 'register' | 'authenticate' | 'federate' | 'enroll' | 'accept'
+
+const INVITATION = {
+  id: invitations.id,
+  site: invitations.siteId,
+  role: invitations.role,
+  userId: invitations.userId,
+  email: invitations.email,
+  sentAt: invitations.sentAt,
+}
+
+function waiting(at: string) {
+  return and(
+    isNull(invitations.usedAt),
+    isNull(invitations.revokedAt),
+    gt(invitations.expiresAt, at),
+  )
+}
 
 function roleOf(value: string): Role {
-  if (value === 'owner' || value === 'editor' || value === 'author') return value
+  if (isRole(value)) return value
   throw new Error(`A role of ${value} is no role the schema allows`)
 }
 
 export async function createInvitation(
   db: Db,
-  input: {
-    site: string
-    role: Role
-    userId: string | null
-    now: Date
-    days: number
-    email?: string | null
-  },
+  input: { site: string; role: Role; now: Date; days: number } & (
+    | { userId: string; email?: never }
+    | { userId: null; email: string }
+  ),
 ): Promise<{ id: string; secret: string; expiresAt: string }> {
   const secret = newSecret('hw_inv')
   const id = newId('inv')
@@ -66,20 +81,9 @@ export async function findInvitation(
   now: Date,
 ): Promise<Invitation | null> {
   const [row] = await db
-    .select({
-      id: invitations.id,
-      site: invitations.siteId,
-      role: invitations.role,
-      userId: invitations.userId,
-    })
+    .select(INVITATION)
     .from(invitations)
-    .where(
-      and(
-        eq(invitations.hash, await hashSecret(secret)),
-        isNull(invitations.usedAt),
-        gt(invitations.expiresAt, now.toISOString()),
-      ),
-    )
+    .where(and(eq(invitations.hash, await hashSecret(secret)), waiting(now.toISOString())))
     .limit(1)
   return row === undefined ? null : { ...row, role: roleOf(row.role) }
 }
@@ -91,17 +95,47 @@ export async function revokeInvitation(
   const at = input.now.toISOString()
   const rows = await db
     .update(invitations)
-    .set({ expiresAt: at, updatedAt: at })
+    .set({ revokedAt: at, updatedAt: at })
     .where(
       and(
         eq(invitations.id, input.id),
         eq(invitations.siteId, input.site),
         isNull(invitations.usedAt),
-        gt(invitations.expiresAt, at),
+        isNull(invitations.revokedAt),
       ),
     )
     .returning({ id: invitations.id })
   return rows.length === 1
+}
+
+export async function renewInvitation(
+  db: Db,
+  input: { site: string; id: string; now: Date; days: number },
+): Promise<{ secret: string; expiresAt: string; invitation: Invitation } | null> {
+  const secret = newSecret('hw_inv')
+  const at = input.now.toISOString()
+  const expiresAt = new Date(input.now.getTime() + input.days * 86_400_000).toISOString()
+  const [row] = await db
+    .update(invitations)
+    .set({ hash: await hashSecret(secret), expiresAt, sentAt: null, updatedAt: at })
+    .where(
+      and(
+        eq(invitations.id, input.id),
+        eq(invitations.siteId, input.site),
+        isNull(invitations.usedAt),
+        isNull(invitations.revokedAt),
+        isNull(invitations.userId),
+      ),
+    )
+    .returning(INVITATION)
+  return row === undefined
+    ? null
+    : { secret, expiresAt, invitation: { ...row, role: roleOf(row.role) } }
+}
+
+export async function markSent(db: Db, id: string, now: Date): Promise<void> {
+  const at = now.toISOString()
+  await db.update(invitations).set({ sentAt: at, updatedAt: at }).where(eq(invitations.id, id))
 }
 
 export async function redeemInvitation(db: Db, id: string, now: Date): Promise<boolean> {
@@ -109,7 +143,7 @@ export async function redeemInvitation(db: Db, id: string, now: Date): Promise<b
   const rows = await db
     .update(invitations)
     .set({ usedAt: at, updatedAt: at })
-    .where(and(eq(invitations.id, id), isNull(invitations.usedAt), gt(invitations.expiresAt, at)))
+    .where(and(eq(invitations.id, id), waiting(at)))
     .returning({ id: invitations.id })
   return rows.length === 1
 }
@@ -186,11 +220,11 @@ export async function createUser(
     role: Role
     site: string
     now: Date
-    email?: string | null
+    email: string
+    verified: boolean
   },
 ): Promise<void> {
   const at = input.now.toISOString()
-  const email = input.email ?? null
   await db.batch([
     db.insert(users).values({
       id: input.id,
@@ -198,8 +232,8 @@ export async function createUser(
       role: legacyRoleOf(input.role),
       createdAt: at,
       updatedAt: at,
-      email,
-      emailVerifiedAt: email === null ? null : at,
+      email: input.email,
+      emailVerifiedAt: input.verified ? at : null,
     }),
     db.insert(members).values({
       id: newId('mbr'),
@@ -262,40 +296,34 @@ export async function linkIdentity(
     .onConflictDoNothing()
 }
 
-export async function userWithEmail(db: Db, email: string): Promise<string | null> {
-  const [row] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(and(eq(users.email, email), isNotNull(users.emailVerifiedAt)))
-    .limit(1)
+export async function userWithAddress(db: Db, email: string): Promise<string | null> {
+  const [row] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1)
   return row?.id ?? null
+}
+
+export async function verifyAddress(db: Db, userId: string, email: string, now: Date) {
+  const at = now.toISOString()
+  await db
+    .update(users)
+    .set({ emailVerifiedAt: at, updatedAt: at })
+    .where(and(eq(users.id, userId), eq(users.email, email), isNull(users.emailVerifiedAt)))
 }
 
 export async function giveEmail(db: Db, userId: string, email: string, now: Date): Promise<void> {
   const at = now.toISOString()
-  if ((await userWithEmail(db, email)) !== null) return
+  const holder = await userWithAddress(db, email)
+  if (holder !== null && holder !== userId) return
   await db
     .update(users)
     .set({ email, emailVerifiedAt: at, updatedAt: at })
-    .where(and(eq(users.id, userId), isNull(users.email)))
+    .where(and(eq(users.id, userId), or(isNull(users.email), isNull(users.emailVerifiedAt))))
 }
 
 export async function invitationsFor(db: Db, email: string, now: Date): Promise<Invitation[]> {
   const rows = await db
-    .select({
-      id: invitations.id,
-      site: invitations.siteId,
-      role: invitations.role,
-      userId: invitations.userId,
-    })
+    .select(INVITATION)
     .from(invitations)
-    .where(
-      and(
-        eq(invitations.email, email),
-        isNull(invitations.usedAt),
-        gt(invitations.expiresAt, now.toISOString()),
-      ),
-    )
+    .where(and(eq(invitations.email, email), waiting(now.toISOString())))
     .orderBy(desc(invitations.createdAt), invitations.id)
   return rows.map((row) => ({ ...row, role: roleOf(row.role) }))
 }
@@ -488,16 +516,11 @@ export async function dropExpired(db: Db, now: Date): Promise<void> {
   ])
 }
 
-export async function invitationById(db: Db, id: string): Promise<Invitation | null> {
+export async function waitingInvitation(db: Db, id: string, now: Date): Promise<Invitation | null> {
   const [row] = await db
-    .select({
-      id: invitations.id,
-      site: invitations.siteId,
-      role: invitations.role,
-      userId: invitations.userId,
-    })
+    .select(INVITATION)
     .from(invitations)
-    .where(eq(invitations.id, id))
+    .where(and(eq(invitations.id, id), waiting(now.toISOString())))
     .limit(1)
   return row === undefined ? null : { ...row, role: roleOf(row.role) }
 }

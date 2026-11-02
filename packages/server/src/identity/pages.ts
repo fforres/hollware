@@ -75,7 +75,9 @@ export function setupPage(nonce: string): string {
 <label for="name">Your name</label><input id="name" name="name" autocomplete="name">
 <label for="label">This device</label><input id="label" name="label" value="Passkey">
 <button type="submit">Create the passkey</button>
-</form>`,
+</form>
+<p>Already in this Hollware for another site? Accept with the passkey you have.</p>
+<button id="accept" type="button">Accept with my passkey</button>`,
     `const invitationOf = ${invitationOf.toString()}
 document.getElementById('form').addEventListener('submit', async (event) => {
   event.preventDefault()
@@ -84,6 +86,15 @@ document.getElementById('form').addEventListener('submit', async (event) => {
     const { challengeId, options } = await post('/auth/register/options', { invitation })
     const credential = await navigator.credentials.create({ publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(options) })
     await post('/auth/register/verify', { challengeId, response: credential.toJSON(), name: document.getElementById('name').value, label: document.getElementById('label').value })
+    location.href = '/admin/'
+  } catch (error) { fail(error) }
+})
+document.getElementById('accept').addEventListener('click', async () => {
+  try {
+    const invitation = invitationOf(location.hash, location.search)
+    const { challengeId, options } = await post('/auth/accept/options', { invitation })
+    const credential = await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options) })
+    await post('/auth/accept/verify', { challengeId, response: credential.toJSON() })
     location.href = '/admin/'
   } catch (error) { fail(error) }
 })`,
@@ -165,7 +176,8 @@ const SCOPE_WORDS: Readonly<Record<string, string>> = {
   'content:read': 'Read the content, drafts included',
   'content:write': 'Write drafts',
   'content:publish': 'Publish and unpublish',
-  'schema:admin': 'Change the site settings',
+  'schema:admin': 'Change the site settings and its people',
+  'site:owner': 'Delete the site, read its backups and name its owners',
   'review:read': 'Read the reviews',
   'review:comment': 'Comment on reviews',
 }

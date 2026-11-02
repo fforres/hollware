@@ -131,7 +131,7 @@ describe('operation specs', () => {
       },
       create_site: {
         effect: 'write',
-        scopes: ['schema:admin'],
+        scopes: ['site:owner'],
         outcomes: ['created', 'taken', 'invalid'],
         errors: ['taken', 'invalid'],
       },
@@ -143,7 +143,7 @@ describe('operation specs', () => {
       },
       delete_site: {
         effect: 'destructive',
-        scopes: ['schema:admin'],
+        scopes: ['site:owner'],
         outcomes: ['trashed', 'needs_confirmation', 'not_found'],
         errors: ['not_found'],
       },
@@ -196,7 +196,7 @@ describe('operation specs', () => {
       },
       list_backups: {
         effect: 'read',
-        scopes: ['schema:admin'],
+        scopes: ['site:owner'],
         outcomes: ['ok', 'unavailable'],
         errors: ['unavailable'],
       },
@@ -271,7 +271,7 @@ describe('operation specs', () => {
       },
       restore_site: {
         effect: 'write',
-        scopes: ['schema:admin'],
+        scopes: ['site:owner'],
         outcomes: ['restored', 'not_found'],
         errors: ['not_found'],
       },

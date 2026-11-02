@@ -340,17 +340,25 @@ describe('signing in through Google', () => {
     ).toEqual([{ detail: '{"provider":"google"}' }])
   })
 
-  it('signs the same account in again by its subject, whatever its email has become', async () => {
+  it('signs the same account in again by its subject, whatever its email has become, and never takes the address of another', async () => {
     const worker = boot({ config: configWith(PROVIDERS), secrets: SECRETS })
     const email = unique('lin')
     const first = await signedInAs((await sendBack(worker, email)).response)
 
+    const other = unique('other', 'example.org')
+    const holder = await seedPerson(other)
+    await env.DB.prepare('UPDATE users SET email = NULL, email_verified_at = NULL WHERE id = ?1')
+      .bind(first)
+      .run()
+
     const again = await signedInAs(
-      (await sendBack(worker, unique('other', 'example.org'), { sub: `google-${email}` })).response,
+      (await sendBack(worker, other, { sub: `google-${email}` })).response,
     )
 
     expect(first).toMatch(/^usr_/)
     expect(again).toBe(first)
+    expect(await rows('SELECT id FROM users WHERE email = ?1', other)).toEqual([{ id: holder }])
+    expect(await rows('SELECT email FROM users WHERE id = ?1', first)).toEqual([{ email: null }])
   })
 
   it('links the account to the person who already has that verified email', async () => {
@@ -366,18 +374,27 @@ describe('signing in through Google', () => {
     expect(await signedInAs(response)).toBe(userId)
   })
 
-  it('gives a person with no email the verified one of the account they sign in with', async () => {
-    const worker = boot({ config: configWith(PROVIDERS), secrets: SECRETS })
-    const email = unique('nil')
-    const userId = await signedInAs((await sendBack(worker, email)).response)
-    await env.DB.prepare('UPDATE users SET email = NULL, email_verified_at = NULL WHERE id = ?1')
-      .bind(userId)
-      .run()
+  it.each([
+    ['no email', null],
+    ['an address nobody verified', 'nil@elsewhere.test'],
+    ['that address, unverified', 'theirs'],
+  ])(
+    'gives a person with %s the verified one of the account they sign in with',
+    async (_, before) => {
+      const worker = boot({ config: configWith(PROVIDERS), secrets: SECRETS })
+      const email = unique('nil')
+      const userId = await signedInAs((await sendBack(worker, email)).response)
+      await env.DB.prepare('UPDATE users SET email = ?1, email_verified_at = NULL WHERE id = ?2')
+        .bind(before === 'theirs' ? email : before, userId)
+        .run()
 
-    await sendBack(worker, email, { sub: `google-${email}` })
+      await sendBack(worker, email, { sub: `google-${email}` })
 
-    expect(await rows('SELECT email FROM users WHERE id = ?1', userId)).toEqual([{ email }])
-  })
+      expect(
+        await rows('SELECT email, email_verified_at FROM users WHERE id = ?1', userId),
+      ).toEqual([{ email, email_verified_at: NOW }])
+    },
+  )
 })
 
 describe('signing in through the other providers', () => {
@@ -726,19 +743,24 @@ describe('the sign-in page and the passkeys', () => {
 })
 
 describe('a person of passkeys only, after the migration to providers', () => {
-  it('still signs in with their passkey, and has no email', async () => {
+  it('signs in with their passkey, and then through a provider with the address they were invited by, which becomes verified', async () => {
     const { softAuthenticator } = await import('../support/authenticator.ts')
     const { authenticationOptions, registrationOptions, verifyAuthentication, verifyRegistration } =
       await import('../../src/identity/ceremonies.ts')
     const ceremony = { db: connect(env.DB), publicUrl: 'https://hollware.test', now: new Date(NOW) }
-    const worker = boot({ config: configWith(PROVIDERS), secrets: SECRETS })
+    const worker = boot({
+      config: configWith(PROVIDERS, { autoProvision: null }),
+      secrets: SECRETS,
+    })
     await worker.ready()
+    const email = unique('pat', 'example.org')
     const invitation = await createInvitation(ceremony.db, {
       site: SITE,
       role: 'author',
       userId: null,
       now: new Date(NOW),
       days: 7,
+      email,
     })
     const authenticator = await softAuthenticator('https://hollware.test')
     const registration = await registrationOptions(ceremony, invitation.secret)
@@ -748,16 +770,23 @@ describe('a person of passkeys only, after the migration to providers', () => {
       name: 'Pat',
       label: 'Laptop',
     })
+    const before = await rows(
+      'SELECT email, email_verified_at FROM users WHERE id = ?1',
+      made.userId,
+    )
 
     const asked = await authenticationOptions(ceremony)
     const again = await verifyAuthentication(ceremony, {
       challengeId: asked.challengeId,
       response: await authenticator.authenticate(asked.options),
     })
+    const { response } = await sendBack(worker, email)
 
     expect(again.userId).toBe(made.userId)
-    expect(await rows('SELECT email FROM users WHERE id = ?1', made.userId)).toEqual([
-      { email: null },
-    ])
+    expect(before).toEqual([{ email, email_verified_at: null }])
+    expect(await signedInAs(response)).toBe(made.userId)
+    expect(
+      await rows('SELECT email, email_verified_at FROM users WHERE id = ?1', made.userId),
+    ).toEqual([{ email, email_verified_at: NOW }])
   })
 })

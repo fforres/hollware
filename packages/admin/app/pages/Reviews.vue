@@ -17,7 +17,7 @@ import { anchorOf, commentsOn, exclusionOf, indexAfterReload } from '../lib/revi
 import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 import { personName } from '../lib/people.ts'
-import { agentStatusColor, clientBadge, isAgentComment, isOwnerOf } from '../lib/agents.ts'
+import { agentStatusColor, clientBadge, isAgentComment, managesSite } from '../lib/agents.ts'
 import { me } from '../lib/me.ts'
 import { pageUrl } from '../lib/site.ts'
 import { openPreview } from '../lib/site-preview.ts'
@@ -54,7 +54,7 @@ const warnings = ref<Warning[]>([])
 const acknowledgeOpen = ref(false)
 const pendingAgents = ref<ReviewAgent[]>([])
 const overriding = ref(false)
-const owner = computed(() => isOwnerOf(me.value))
+const owner = computed(() => managesSite(me.value))
 const pendingAgentsOpen = computed({
   get: () => pendingAgents.value.length > 0,
   set: (value: boolean) => {

@@ -22,7 +22,7 @@ export const es: Messages = {
     sortBy: (label: string) => `Ordenar por ${label.toLowerCase()}`,
   },
   status: { draft: 'borrador', scheduled: 'programada', published: 'publicada' },
-  roles: { owner: 'dueño', editor: 'editor', author: 'autor' },
+  roles: { owner: 'dueño', admin: 'admin', editor: 'editor', author: 'autor', reviewer: 'revisor' },
   severity: { error: 'error', warning: 'advertencia' },
   nav: {
     breadcrumb: 'Dónde estás',
@@ -267,6 +267,7 @@ export const es: Messages = {
     notRestored: 'No se restauró',
   },
   entry: {
+    readOnly: 'En este sitio lees y comentas: un revisor no escribe.',
     properties: 'Propiedades',
     closePanel: 'Cerrar el panel',
     more: 'Más acciones',
@@ -649,7 +650,7 @@ export const es: Messages = {
       `Escribe un número entero de días entre ${min} y ${max}, o conserva el registro siempre.`,
     saveActivity: 'Guardar la configuración del registro',
     imagesNote:
-      'Cómo se guardan las imágenes que se suban desde ahora. Las que ya están no cambian.',
+      'Cómo se guardan las imágenes, videos y PDF que se suban desde ahora. Los que ya están no cambian.',
     imageFormat: 'Formato',
     formatWebp: 'WebP',
     formatAvif: 'AVIF',
@@ -665,6 +666,11 @@ export const es: Messages = {
       'Cada imagen recibe también una copia de cada uno de estos anchos menores que el suyo, para que un teléfono cargue una pequeña: srcset. Cada copia es una conversión más de Cloudflare Images, que cuenta para su cuota mensual. Vacío no hace ninguna.',
     imageWidthsInvalid: (min: number, max: number, most: number) =>
       `Escribe hasta ${most} números enteros entre ${min} y ${max}, separados por comas, como 640, 1280.`,
+    maxMegabytes: 'Video o PDF más grande, en megabytes',
+    maxMegabytesHelp:
+      'Las imágenes siguen en 10 MB. Una subida lleva como mucho lo que permite el plan de Cloudflare de la zona: 100 MB en Free y Pro.',
+    maxMegabytesInvalid: (most: number) =>
+      `Escribe un número entero de megabytes entre 1 y ${most}.`,
     saveImages: 'Guardar la configuración de imágenes',
     keepOriginals: 'Guardar el original de cada imagen',
     keepOriginalsHelp:
@@ -688,7 +694,8 @@ export const es: Messages = {
     accessEmails: 'Direcciones',
     accessEmailsHelp: 'Una por línea: ada@example.com.',
     accessRole: 'Su rol',
-    accessRoleHelp: 'Un editor publica; lo que publica un autor pasa por revisión.',
+    accessRoleHelp:
+      'Un editor publica; lo que publica un autor pasa por revisión; un revisor lee y comenta.',
     accessEmpty: 'Indica un dominio o una dirección, o desactívalo.',
     saveAccess: 'Guardar quién entra',
     backupsUnavailable: 'Los respaldos necesitan el bucket de R2 MEDIA del despliegue.',
@@ -806,6 +813,7 @@ export const es: Messages = {
       'content:write': 'Escribir borradores',
       'content:publish': 'Publicar',
       'schema:admin': 'Cambiar el sitio',
+      'site:owner': 'Borrar el sitio y nombrar dueños',
       'review:read': 'Leer revisiones',
       'review:comment': 'Comentar revisiones',
     },
@@ -837,9 +845,10 @@ export const es: Messages = {
   },
   people: {
     title: 'Personas',
-    ownerOnly: 'Solo un dueño invita a personas',
+    ownerOnly: 'Solo un dueño o un admin invita a personas',
     role: 'Rol',
-    roleHelp: 'Un editor publica; lo que escribe un autor pasa por revisión.',
+    roleHelp:
+      'Un admin lleva el sitio y su gente; un editor publica; lo que escribe un autor pasa por revisión; un revisor lee y comenta.',
     invite: 'Invitar',
     linkShown: 'Envía este enlace a la persona: funciona una vez, durante 7 días',
     members: 'Miembros',
@@ -860,16 +869,26 @@ export const es: Messages = {
       role: 'Rol',
       since: 'Desde',
       validUntil: 'Válida hasta',
+      status: 'Estado',
     },
     email: 'Correo',
     emailHelp:
-      'La dirección con la que la persona entra mediante un proveedor. Déjala vacía para un enlace que cualquiera puede abrir.',
+      'La dirección de la persona: Hollware la reconoce por ella, y más adelante puede entrar con ella mediante un proveedor.',
     anyAddress: 'quien tenga el enlace',
+    emailMailed: 'Hollware envía la invitación a esta dirección y no muestra su enlace a nadie.',
+    sentTo: (email: string) => `Invitación enviada a ${email}`,
+    notSent:
+      'No se pudo enviar el correo. Envía este enlace a la persona: funciona una vez, durante 7 días',
+    status: { waiting: 'Pendiente', expired: 'Vencida' },
+    emailed: 'Enviada por correo',
+    renew: (role: string) => `Renovar la invitación (${role})`,
+    renewed: 'Invitación renovada',
+    notRenewed: 'No se renovó',
     notInvited: 'No se invitó',
     roleChanged: 'Rol cambiado',
     notChanged: 'No se cambió',
     out: (name: string) => `${name} ya no está en este sitio`,
-    revoke: (role: string) => `Revocar la invitación de ${role}`,
+    revoke: (role: string) => `Revocar la invitación (${role})`,
     revokeTitle: '¿Revocar esta invitación?',
     revokeBody:
       'Su link deja de funcionar de inmediato. Invita de nuevo a la persona para mandarle otro.',
@@ -964,15 +983,16 @@ export const es: Messages = {
     title: 'Imágenes',
     copies: (widths: string) => `copias de ${widths} px`,
     intro:
-      'Las imágenes del sitio, de la más nueva a la más antigua. Cada una se convierte una vez al llegar (a WebP por defecto); copia su referencia en una entrada para mostrarla.',
-    file: 'Imagen',
+      'Las imágenes, videos y PDF del sitio, del más nuevo al más antiguo. Una imagen se convierte una vez al llegar (a WebP por defecto), un video o un PDF se guarda tal como llegó; copia su referencia en una entrada para mostrarlo o enlazarlo.',
+    file: 'Archivo',
     alt: 'Qué muestra',
     altHelp: 'Para quien no puede verla: obligatorio.',
     upload: 'Subir',
-    uploaded: 'Imagen subida',
-    exists: 'El sitio ya tiene esta imagen',
-    refused: 'La imagen no se guardó',
-    none: 'Todavía no hay imágenes.',
+    uploaded: 'Archivo subido',
+    exists: 'El sitio ya tiene este archivo',
+    refused: 'El archivo no se guardó',
+    none: 'Todavía no hay archivos.',
+    openPdf: 'Abrir el PDF',
     copy: 'Copiar para Markdown',
     editAlt: 'Editar lo que muestra',
     editAltOf: (name: string) => `Editar lo que muestra: ${name}`,
@@ -983,7 +1003,7 @@ export const es: Messages = {
   },
   activity: {
     title: 'Actividad',
-    ownerOnly: 'Solo un dueño lee el registro de actividad',
+    ownerOnly: 'Solo un dueño o un admin lee el registro de actividad',
     intro:
       'Quién hizo qué en este sitio, y cada intento que fue rechazado. Lo más reciente primero.',
     actions: {
@@ -1009,7 +1029,7 @@ export const es: Messages = {
       make_webhook_secret: 'Creó un secreto de webhook',
       connect_analytics: 'Conectó analíticas',
       disconnect_analytics: 'Desconectó analíticas',
-      upload_asset: 'Subió una imagen',
+      upload_asset: 'Subió un archivo',
       update_asset: 'Cambió el texto alternativo de una imagen',
       'token.create': 'Creó un token',
       'preview.create': 'Creó un enlace de vista previa',
@@ -1019,6 +1039,7 @@ export const es: Messages = {
       'member.anonymize': 'Anonimizó a un antiguo miembro',
       'invitation.create': 'Invitó a una persona',
       'invitation.revoke': 'Revocó una invitación',
+      'invitation.renew': 'Renovó una invitación',
       'invitation.accept': 'Aceptó una invitación',
       'session.sign_in': 'Inició sesión',
       'session.sign_out': 'Cerró sesión',
@@ -1073,7 +1094,7 @@ export const es: Messages = {
   tokens: {
     never: 'Sin vencimiento',
     title: 'Tokens',
-    ownerOnly: 'Solo un dueño administra los tokens',
+    ownerOnly: 'Solo un dueño o un admin administra los tokens',
     label: 'Etiqueta',
     labelPlaceholder: 'Para qué es el token',
     days: 'Días',
