@@ -1341,11 +1341,11 @@ export const THREATS: readonly Threat[] = [
     threat:
       'An agent makes the Worker fetch a URL of its choosing with `upload_asset`, or one that turns into plain http or never ends',
     mitigation:
-      'https only, each redirect followed by hand and refused when it leads to http or past five, at most 10 MB read with a cap, and `global_fetch_strictly_public` in every Worker',
+      "https only, each redirect followed by hand and refused when it leads to http or past five, an answer without a Content-Length read with a cap of 10 MB, one that declares it streamed to R2 through a `FixedLengthStream` that refuses a body shorter or longer than it, never past the site's media `maxBytes`, and `global_fetch_strictly_public` in every Worker",
     guards: [
       {
         file: 'packages/server/tests/ops/assets.workerd.test.ts',
-        test: 'refuses http, a redirect to http or past five, an answer that is not ok, a file past 10 MB, a fetch that fails, and data with url',
+        test: 'refuses http, a redirect to http or past five, an answer that is not ok, one that ends short of its Content-Length or has none past 10 MB, a fetch that fails, and data with url',
       },
       {
         file: 'tests/conventions/wrangler-flags.test.ts',

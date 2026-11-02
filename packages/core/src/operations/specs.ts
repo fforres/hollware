@@ -25,7 +25,7 @@ import {
   version,
 } from './schemas.ts'
 import { isSiteKey } from '../config/site-key.ts'
-import { IMAGE_FORMATS, MAX_ASSET_BYTES } from '../media/index.ts'
+import { ASSET_FORMATS, MAX_ASSET_BYTES } from '../media/index.ts'
 import { collectionDefinitionData, siteDefinitionData } from '../structure/definition.ts'
 import { defineOperation } from './types.ts'
 
@@ -1219,10 +1219,12 @@ const asset = z.object({
   id: assetId,
   reference: z
     .string()
-    .describe('What content writes to show it: img: asset:ast_… or ![alt](asset:ast_…).'),
+    .describe(
+      'What content writes to name it: img: asset:ast_… in the frontmatter, ![alt](asset:ast_…) in Markdown for an image, [text](asset:ast_…) for a link to a video or a PDF.',
+    ),
   url: z.string().describe('Where the Worker serves it, to anyone, cached for a year.'),
-  format: z.enum(IMAGE_FORMATS).describe('What it is served as.'),
-  width: z.number().int().nullable().describe('In pixels; null for an SVG.'),
+  format: z.enum(ASSET_FORMATS).describe('What it is served as.'),
+  width: z.number().int().nullable().describe('In pixels; null for an SVG, a video or a PDF.'),
   height: z.number().int().nullable(),
   bytes: z.number().int().describe('The size of the file served.'),
   widths: z
@@ -1238,7 +1240,7 @@ const asset = z.object({
     .describe(
       'Its copies and itself as the srcset of an img, such as "<url>/640 640w, <url> 1600w"; null when it has no copy.',
     ),
-  originalFormat: z.enum(IMAGE_FORMATS).describe('What it was sent as.'),
+  originalFormat: z.enum(ASSET_FORMATS).describe('What it was sent as.'),
   originalBytes: z.number().int(),
   alt: z.string().describe('What it shows, for whoever cannot see it.'),
   filename: z.string().describe('The name it was sent with.'),
@@ -1249,22 +1251,24 @@ const MAX_BASE64 = Math.ceil(MAX_ASSET_BYTES / 3) * 4
 
 export const uploadAsset = defineOperation({
   name: 'upload_asset',
-  title: 'Upload an image',
+  title: 'Upload an image, a video or a PDF',
   description:
-    "Uploads an image to the site: JPEG, PNG, WebP, AVIF, GIF or SVG, at most 10 MB, sent in base64 as data, or named by a public https url that Hollware downloads. What it is comes from its bytes, never from its name. The site's media setting converts it once (to WebP at 85 by default; PNG lossless; GIF with its frames; nothing wider than its maxWidth) and makes the narrower copies of its widths for srcset (640 and 1280 pixels by default), and an SVG is kept as it is when nothing in it can run, or refused with what to remove. The same file uploaded again answers exists with the same asset. Write its reference in content: img: asset:ast_… in the frontmatter, or ![alt](asset:ast_…) in Markdown.",
+    "Uploads a file to the site: an image (JPEG, PNG, WebP, AVIF, GIF or SVG, at most 10 MB), or a video (MP4, WebM) or a PDF, up to the site's media maxBytes (100 MB by default). Send it in base64 as data (at most 10 MB), or name a public https url that Hollware downloads and streams to R2. A larger file from a computer goes to PUT /v1/assets, which streams the request body. What it is comes from its bytes, never from its name. The site's media setting converts an image once (to WebP at 85 by default; PNG lossless; GIF with its frames; nothing wider than its maxWidth) and makes the narrower copies of its widths for srcset (640 and 1280 pixels by default), and an SVG is kept as it is when nothing in it can run, or refused with what to remove. A video or a PDF is kept as it came. The same file uploaded again answers exists with the same asset. Write its reference in content: img: asset:ast_… in the frontmatter, ![alt](asset:ast_…) in Markdown for an image, or [text](asset:ast_…) for a link to a video or a PDF.",
   input: z.strictObject({
     filename: z.string().min(1).max(200).describe('Its name, such as continuum.png.'),
     alt: z
       .string()
       .min(1)
       .max(500)
-      .describe('What the image shows, for whoever cannot see it: required.'),
+      .describe(
+        'What the image shows, for whoever cannot see it, or what the video or the PDF holds: required.',
+      ),
     data: z
       .string()
       .min(1)
       .max(MAX_BASE64)
       .optional()
-      .describe('The file, in base64. Send data or url, not both.'),
+      .describe('The file, in base64, at most 10 MB. Send data or url, not both.'),
     url: z
       .string()
       .min(1)
@@ -1294,9 +1298,9 @@ export const uploadAsset = defineOperation({
 
 export const listAssets = defineOperation({
   name: 'list_assets',
-  title: 'List the images of the site',
+  title: 'List the images, videos and PDFs of the site',
   description:
-    'Lists the images of the site, newest first, with their reference, URL, size and alt. Pass the nextCursor of an answer as cursor to get the next page.',
+    'Lists the images, videos and PDFs of the site, newest first, with their reference, URL, size and alt. Pass the nextCursor of an answer as cursor to get the next page.',
   input: z.strictObject({
     limit: z.number().int().min(1).max(100).default(20),
     cursor: z.string().min(1).optional(),

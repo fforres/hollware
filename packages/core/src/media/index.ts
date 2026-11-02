@@ -10,18 +10,37 @@ export const IMAGE_FORMATS = [
 ] as const
 export type ImageFormat = (typeof IMAGE_FORMATS)[number]
 
-/** The largest file `upload_asset` takes, in bytes: the binding takes 20 MB, this keeps room. */
+/** Kept as they arrive: Cloudflare Images never sees them, so they have no size limit of its own. */
+export const FILE_FORMATS = ['video/mp4', 'video/webm', 'application/pdf'] as const
+export type FileFormat = (typeof FILE_FORMATS)[number]
+
+export const ASSET_FORMATS = [...IMAGE_FORMATS, ...FILE_FORMATS] as const
+export type AssetFormat = (typeof ASSET_FORMATS)[number]
+
+/** The largest image Hollware takes, in bytes: the binding takes 20 MB, this keeps room. */
 export const MAX_ASSET_BYTES = 10 * 1024 * 1024
 
+/** The largest file a site takes when its media setting names no `maxBytes`: 100 MB. */
+export const DEFAULT_MAX_FILE_BYTES = 100 * 1024 * 1024
+
+/** The largest `maxBytes` a site may set: the largest object R2 writes in one put. */
+export const MAX_FILE_BYTES = 5_000_000_000
+
 /** The extension a format is served and exported with. */
-export const EXTENSIONS: Readonly<Record<ImageFormat, string>> = {
+export const EXTENSIONS: Readonly<Record<AssetFormat, string>> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
   'image/avif': 'avif',
   'image/gif': 'gif',
   'image/svg+xml': 'svg',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+  'application/pdf': 'pdf',
 }
+
+export const isImageFormat = (format: string): format is ImageFormat =>
+  IMAGE_FORMATS.some((candidate) => candidate === format)
 
 const startsWith = (bytes: Uint8Array, at: number, expected: readonly number[]) =>
   expected.every((byte, index) => bytes[at + index] === byte)
@@ -46,6 +65,26 @@ export function sniffImage(bytes: Uint8Array): ImageFormat | null {
   const head = text(bytes.subarray(0, 512)).replace(BOM, '').trimStart()
   return opensOnSvg(head) ? 'image/svg+xml' : null
 }
+
+const MP4_BRANDS = /^(?:isom|iso[2-9]|mp4[12]|avc1|M4V |M4VP|dash|mmp4|f4v )$/
+
+/**
+ * The format of a file Hollware keeps as it came, read from its bytes: an MP4 by the brand of
+ * its `ftyp` box, a WebM by the doctype of its EBML header, a PDF by its `%PDF-` header.
+ */
+export function sniffFile(bytes: Uint8Array): FileFormat | null {
+  if (startsWith(bytes, 4, ascii('ftyp')) && MP4_BRANDS.test(text(bytes.subarray(8, 12)))) {
+    return 'video/mp4'
+  }
+  if (startsWith(bytes, 0, [0x1a, 0x45, 0xdf, 0xa3])) {
+    return text(bytes.subarray(4, 64)).includes('webm') ? 'video/webm' : null
+  }
+  return startsWith(bytes, 0, ascii('%PDF-')) ? 'application/pdf' : null
+}
+
+/** What a file is, image or not, read from its bytes: `null` for anything Hollware does not take. */
+export const sniffAsset = (bytes: Uint8Array): AssetFormat | null =>
+  sniffImage(bytes) ?? sniffFile(bytes)
 
 function opensOnSvg(head: string): boolean {
   if (/^<svg[\s>/]/i.test(head)) return true

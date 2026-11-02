@@ -4,8 +4,8 @@
     "reason": "The main module, and the chunks it imports statically, are evaluated at every cold start, and the first request of a fresh isolate pays for them: the Free plan gives a request 10 ms of CPU."
   },
   "total": {
-    "gzipKiB": 458,
-    "reason": "Every module is uploaded with the Worker, and the first write loads the lazy ones as well: the Markdown parser is imported on the first write, so what it weighs is the cost of a cold write. Raised from 400 on 2026-10-16 for the JSON Schema validator and the operations that change a site's structure, from 450 on 2026-10-29 for the delivery of events to agents and their grants (about 6 KiB), and from 455 on 2026-10-30 for js-yaml 5.5.0 and the MCP server SDK 2.4.0 (0.7 KiB together): a lazy chunk does not shrink this total, and splitting the agents and reviews out cost more in chunks than it saved. Cloudflare's own limit is 3 MB on the Free plan."
+    "gzipKiB": 461,
+    "reason": "Every module is uploaded with the Worker, and the first write loads the lazy ones as well: the Markdown parser is imported on the first write, so what it weighs is the cost of a cold write. Raised from 400 on 2026-10-16 for the JSON Schema validator and the operations that change a site's structure, from 450 on 2026-10-29 for the delivery of events to agents and their grants (about 6 KiB), from 455 on 2026-10-30 for js-yaml 5.5.0 and the MCP server SDK 2.4.0 (0.7 KiB together), and from 458 on 2026-11-02 for videos and PDFs streamed to R2, which bring the total to 460.34 KiB: a lazy chunk does not shrink this total, and splitting the agents and reviews out cost more in chunks than it saved. Cloudflare's own limit is 3 MB on the Free plan."
   },
   "lazyPackages": {
     "packages": [

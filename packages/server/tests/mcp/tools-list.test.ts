@@ -101,7 +101,7 @@ const TOOLS = [
   { name: 'get_revision', title: 'Get a revision of an entry', annotations: READ },
   { name: 'get_structure', title: 'Get the structure of the site', annotations: READ },
   { name: 'get_translations', title: 'Get the translations of an entry', annotations: READ },
-  { name: 'list_assets', title: 'List the images of the site', annotations: READ },
+  { name: 'list_assets', title: 'List the images, videos and PDFs of the site', annotations: READ },
   { name: 'list_backups', title: 'List the backups of the site', annotations: READ },
   { name: 'list_entries', title: 'List entries', annotations: READ },
   { name: 'list_redirects', title: 'List the redirects of the site', annotations: READ },
@@ -123,7 +123,7 @@ const TOOLS = [
   { name: 'update_asset', title: 'Change the alt of an image', annotations: CHANGE },
   { name: 'update_draft', title: 'Update a draft', annotations: CHANGE },
   { name: 'update_site', title: 'Change the structure of the site', annotations: DESTROY },
-  { name: 'upload_asset', title: 'Upload an image', annotations: CHANGE },
+  { name: 'upload_asset', title: 'Upload an image, a video or a PDF', annotations: CHANGE },
   { name: 'validate', title: 'Validate a Markdown file', annotations: READ },
 ]
 

@@ -66,7 +66,7 @@ describe('budgets.json', () => {
     )
 
     expect(budgets.main.gzipKiB).toBe(250)
-    expect(budgets.total.gzipKiB).toBe(458)
+    expect(budgets.total.gzipKiB).toBe(461)
     expect(budgets.lazyPackages.packages).toEqual([
       'comark',
       '@comark/html',

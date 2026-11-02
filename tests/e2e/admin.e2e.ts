@@ -840,6 +840,25 @@ test('the owner inserts an image of the library and uploads another, from the ed
   ).toBeVisible()
 })
 
+test('the owner uploads a PDF to the library, opens it and copies a link to it', async () => {
+  await owner.goto('/admin/images')
+  await owner.locator('input[type="file"]').setInputFiles({
+    name: 'policy.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.7\n%\u00e2\u00e3\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n'),
+  })
+  await owner.getByRole('textbox', { name: 'What it shows' }).fill('The privacy policy')
+  await owner.getByRole('button', { name: 'Upload' }).click()
+
+  const card = owner.getByRole('listitem').filter({ hasText: 'The privacy policy' })
+  await expect(card.getByRole('link', { name: 'Open the PDF' })).toHaveAttribute(
+    'href',
+    /\/assets\/[a-z0-9-]+\/ast_[0-9a-f]{26}$/,
+  )
+  await expect(card).toContainText('policy.pdf')
+  await expectAccessible(owner)
+})
+
 test('the owner gives a collection an image, a reference and a field of JSON, and edits each in the editor', async () => {
   await owner.goto('/admin/settings/collections/talks')
   await expect(owner.getByRole('heading', { name: 'talks', level: 1 })).toBeVisible()
@@ -1082,6 +1101,20 @@ test('the owner sets the narrower copies the images of the site get, in Images',
     name: /^(Keep the original of each image|Guardar el original de cada imagen)$/,
   })
   await expect(originals).toBeChecked()
+  const largest = owner.getByRole('spinbutton', {
+    name: /^(Largest video or PDF, in megabytes|Video o PDF más grande, en megabytes)/,
+  })
+  await expect(largest).toHaveValue('100')
+  await largest.fill('250')
+  await owner
+    .getByRole('button', {
+      name: /^(Save the image settings|Guardar la configuración de imágenes)$/,
+    })
+    .click()
+  await expect(owner.getByText(/^(Saved|Guardado)/).first()).toBeVisible()
+  await owner.reload()
+  await expect(largest).toHaveValue('250')
+  await largest.fill('100')
   await widths.fill('640, 1280')
   await owner
     .getByRole('button', {

@@ -204,7 +204,7 @@ export function urlScheme(value: string): string | undefined {
 
 export type UrlKind = 'link' | 'image'
 
-const LINK_SCHEMES: ReadonlySet<string> = new Set(['http', 'https', 'mailto'])
+const LINK_SCHEMES: ReadonlySet<string> = new Set(['http', 'https', 'mailto', 'asset'])
 const IMAGE_SCHEMES: ReadonlySet<string> = new Set(['http', 'https', 'asset'])
 
 export function isSafeUrl(value: string, kind: UrlKind): boolean {

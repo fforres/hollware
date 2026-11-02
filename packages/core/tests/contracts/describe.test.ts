@@ -110,7 +110,7 @@ describe('describeBuiltInContracts', () => {
         severity: 'error',
         phases: BOTH,
         description:
-          'Links and images use an https:, http: or mailto: URL, a path of the site or an anchor.',
+          'Links and images use an https: or http: URL, an asset: reference, a path of the site or an anchor; links may also use mailto:.',
       },
       {
         id: 'size-limit',

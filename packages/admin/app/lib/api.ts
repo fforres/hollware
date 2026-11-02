@@ -46,6 +46,12 @@ export const READS: ReadonlySet<OperationName> = new Set<OperationName>([
   'validate',
 ])
 
+interface Problem {
+  readonly code?: string
+  readonly message?: string
+  readonly fix?: string
+}
+
 function pageLeftForSignIn(): Promise<never> {
   return new Promise<never>(() => {})
 }
@@ -72,7 +78,8 @@ export function createApi(deps: ApiDeps) {
     }
     if (response.ok) return read(response)
     const body: unknown = await response.json()
-    const error = (body ?? {}) as { code?: string; message?: string; fix?: string }
+    const answer = (body ?? {}) as Problem & { problem?: Problem }
+    const error = answer.problem ?? answer
     throw new ApiError(
       error.code ?? 'internal',
       error.message ?? text().answered(response.status),
@@ -100,6 +107,18 @@ export function createApi(deps: ApiDeps) {
         ...(signal === undefined ? {} : { signal }),
       }) as Promise<Output<Name>>
       return READS.has(name) ? answer : write(answer)
+    },
+
+    async upload(
+      file: Blob,
+      described: { readonly filename: string; readonly alt: string },
+    ): Promise<Output<'upload_asset'>> {
+      const query = new URLSearchParams({ filename: described.filename, alt: described.alt })
+      return write(
+        send(`/v1/assets?${query.toString()}`, { method: 'PUT', body: file }) as Promise<
+          Output<'upload_asset'>
+        >,
+      )
     },
 
     async file(path: string): Promise<Blob> {

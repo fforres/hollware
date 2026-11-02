@@ -10,6 +10,8 @@ import {
   conversionOf,
   processMarkdown,
   resolveAssetReferences,
+  sniffAsset,
+  sniffFile,
   sniffImage,
   variantWidthsOf,
 } from '../src/index.ts'
@@ -282,6 +284,59 @@ describe('asset references', () => {
   })
 })
 
+describe('sniffFile', () => {
+  it('tells an MP4 by the brand of its ftyp box, a WebM by its EBML doctype, a PDF by %PDF-', () => {
+    const box = (brand: string) => {
+      const head = new Uint8Array(16)
+      head.set(ascii(`ftyp${brand}`), 4)
+      return head
+    }
+    const ebml = (doctype: string) =>
+      new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x82, 0x84, ...ascii(doctype)])
+    expect(
+      [
+        box('isom'),
+        box('mp42'),
+        box('avc1'),
+        box('M4V '),
+        box('qt  '),
+        box('heic'),
+        box('avif'),
+        ebml('webm'),
+        ebml('matroska'),
+        ascii('%PDF-1.7\n'),
+        ascii(' %PDF-1.7'),
+        bytes(0x50, 0x4b, 0x03, 0x04),
+        bytes(),
+      ].map(sniffFile),
+    ).toEqual([
+      'video/mp4',
+      'video/mp4',
+      'video/mp4',
+      'video/mp4',
+      null,
+      null,
+      null,
+      'video/webm',
+      null,
+      'application/pdf',
+      null,
+      null,
+      null,
+    ])
+  })
+
+  it('leaves an AVIF to sniffImage when sniffAsset reads any file', () => {
+    const avif = new Uint8Array(16)
+    avif.set(ascii('ftypavif'), 4)
+    expect([avif, ascii('%PDF-2.0'), ascii('plain text')].map(sniffAsset)).toEqual([
+      'image/avif',
+      'application/pdf',
+      null,
+    ])
+  })
+})
+
 describe('readMedia', () => {
   it('reads the media setting, and refuses what is out of range with a fix', () => {
     const problems = new Problems()
@@ -298,9 +353,12 @@ describe('readMedia', () => {
       maxWidth: 1600,
       widths: [480, 960],
       keepOriginals: true,
+      maxBytes: 104857600,
     })
     expect(readMedia('media', { widths: [] }, problems).widths).toEqual([])
     expect(readMedia('media', { keepOriginals: false }, problems).keepOriginals).toBe(false)
+    expect(readMedia('media', { maxBytes: 524288000 }, problems).maxBytes).toBe(524288000)
+    expect(readMedia('media', { maxBytes: 5000000000 }, problems).maxBytes).toBe(5000000000)
     expect(problems.list).toEqual([])
     expect(
       readMedia('media', { format: 'png', quality: 101, maxWidth: 100, widths: [100] }, problems),
@@ -308,6 +366,8 @@ describe('readMedia', () => {
     for (const widths of [[640, 640], [320, 480, 640, 800, 960], [640.5], '640'])
       readMedia('media', { widths }, problems)
     readMedia('media', { keepOriginals: 'no' }, problems)
+    for (const maxBytes of [0, 5000000001, 1.5, '500'])
+      expect(readMedia('media', { maxBytes }, problems).maxBytes).toBe(104857600)
     expect(problems.list.map((problem) => problem.path)).toEqual([
       'media.format',
       'media.quality',
@@ -318,6 +378,10 @@ describe('readMedia', () => {
       'media.widths',
       'media.widths',
       'media.keepOriginals',
+      'media.maxBytes',
+      'media.maxBytes',
+      'media.maxBytes',
+      'media.maxBytes',
     ])
     expect(problems.list.every((problem) => problem.fix.length > 0)).toBe(true)
   })

@@ -150,6 +150,8 @@ export interface SiteDefinition {
     readonly widths?: readonly number[]
     /** Whether the file as it was uploaded is kept besides the one served: true by default. */
     readonly keepOriginals?: boolean
+    /** The largest video or PDF the site takes, in bytes: 100 MB by default. */
+    readonly maxBytes?: number
   }
 }
 
@@ -351,6 +353,7 @@ export interface ResolvedMedia {
   readonly maxWidth: number
   readonly widths: readonly number[]
   readonly keepOriginals: boolean
+  readonly maxBytes: number
 }
 
 /** What the activity log of a site keeps. */

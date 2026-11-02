@@ -3,6 +3,7 @@ import { AGENT_EVENT_KINDS } from '../config/agents.ts'
 import { SCOPES } from '../scopes.ts'
 import * as z from 'zod'
 import { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS } from '../config/audit.ts'
+import { MAX_FILE_BYTES } from '../media/index.ts'
 import {
   DEFAULT_MEDIA,
   MEDIA_FORMATS,
@@ -221,6 +222,15 @@ export const siteDefinitionData = z.strictObject({
         .default(DEFAULT_MEDIA.keepOriginals)
         .describe(
           'Whether the file as it was uploaded is kept in R2 besides the one served, for a later change of format. false keeps only the file served and its copies, which takes less storage; the images uploaded before keep theirs.',
+        ),
+      maxBytes: z
+        .number()
+        .int()
+        .min(1)
+        .max(MAX_FILE_BYTES)
+        .default(DEFAULT_MEDIA.maxBytes)
+        .describe(
+          'The largest video (MP4, WebM) or PDF the site takes, in bytes: 104857600 (100 MB) by default, up to 5000000000. One upload request carries at most what the Cloudflare plan of the zone allows: 100 MB on Free and Pro, 200 MB on Business, 500 MB on Enterprise. Images stay at 10 MB, what Cloudflare Images converts.',
         ),
     })
     .default({ ...DEFAULT_MEDIA, widths: [...DEFAULT_MEDIA.widths] })

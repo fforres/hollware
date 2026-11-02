@@ -120,6 +120,7 @@ export function sitePreset(
       maxWidth: 2400,
       widths: [640, 1280],
       keepOriginals: true,
+      maxBytes: 104857600,
     },
     access: { autoProvision: null },
     agents: [],

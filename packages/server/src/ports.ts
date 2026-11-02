@@ -797,10 +797,27 @@ export interface Structure {
   readonly secrets?: { make(site: string, name: string): Promise<string | null> }
 }
 
+export interface StoredFile {
+  readonly body: ReadableStream
+  readonly contentType: string
+  readonly size: number
+  readonly range: { readonly offset: number; readonly length: number } | null
+}
+
 /** Where the files of the assets live: R2. */
 export interface AssetFiles {
   put(key: string, bytes: Uint8Array, contentType: string): Promise<void>
-  get(key: string): Promise<{ readonly body: ReadableStream; readonly contentType: string } | null>
+  get(key: string, range?: Headers): Promise<StoredFile | null>
+  putStream(
+    key: string,
+    body: ReadableStream<Uint8Array>,
+    length: number,
+    contentType: string,
+  ): Promise<void>
+  head(key: string, length: number): Promise<Uint8Array | null>
+  sha256(key: string): Promise<string | null>
+  copy(from: string, to: string, contentType: string): Promise<void>
+  delete(key: string): Promise<void>
 }
 
 /** What an image is, as the binding reads it; an SVG has no size. */

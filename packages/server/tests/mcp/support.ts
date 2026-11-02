@@ -40,7 +40,14 @@ export const SITE: ResolvedSite = {
   access: { autoProvision: null },
   agents: [],
   review: { requireAgents: false },
-  media: { format: 'webp', quality: 85, maxWidth: 2400, widths: [640, 1280], keepOriginals: true },
+  media: {
+    format: 'webp',
+    quality: 85,
+    maxWidth: 2400,
+    widths: [640, 1280],
+    keepOriginals: true,
+    maxBytes: 104857600,
+  },
 }
 
 const unused = (): never => {
